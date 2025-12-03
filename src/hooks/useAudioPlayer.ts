@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Howl } from 'howler';
 import { usePlayerStore } from '../store/playerStore';
-import { incrementPlayCount, revokeAudioUrl } from '../db/database';
+import { incrementPlayCount, revokeAudioUrl, createAudioUrl } from '../db/database';
 
 export function useAudioPlayer() {
   const howlRef = useRef<Howl | null>(null);
@@ -44,18 +44,26 @@ export function useAudioPlayer() {
     }
 
     // Release memory from previous song's blob URL (keep some in cache for quick switching)
+    // Only revoke URLs that are definitely not needed anymore
     if (previousSongIdRef.current) {
       const prevId = previousSongIdRef.current;
-      // Delay cleanup to allow for "previous song" functionality
+      // Longer delay and more careful cleanup
       setTimeout(() => {
-        const { queue, queueIndex } = usePlayerStore.getState();
-        const prevIndex = queueIndex > 0 ? queueIndex - 1 : queue.length - 1;
-        const prevSongInQueue = queue[prevIndex];
-        // Only revoke if it's not the previous song in queue (user might go back)
-        if (prevId && prevSongInQueue?.id !== prevId) {
+        const { queue, queueIndex, currentSong: nowPlaying } = usePlayerStore.getState();
+        
+        // Don't revoke if it's the currently playing song
+        if (nowPlaying?.id === prevId) return;
+        
+        // Don't revoke if it's in the nearby queue (prev/next songs)
+        const nearbyIndices = [queueIndex - 1, queueIndex, queueIndex + 1];
+        const nearbySongIds = nearbyIndices
+          .filter(i => i >= 0 && i < queue.length)
+          .map(i => queue[i]?.id);
+        
+        if (!nearbySongIds.includes(prevId)) {
           revokeAudioUrl(prevId);
         }
-      }, 5000);
+      }, 10000); // Increased to 10 seconds
     }
 
     isLoadingRef.current = true;
@@ -63,9 +71,19 @@ export function useAudioPlayer() {
 
     const initialVolume = usePlayerStore.getState().volume;
     const songId = currentSong.id; // Capture for closure
+    
+    // Ensure we have a valid audio URL (recreate if needed)
+    const audioUrl = currentSong.filePath || createAudioUrl(currentSong);
+    
+    if (!audioUrl) {
+      console.error('No audio URL available for song:', currentSong.title);
+      setError('לא נמצא קובץ אודיו לשיר זה');
+      isLoadingRef.current = false;
+      return;
+    }
 
     const howl = new Howl({
-      src: [currentSong.filePath],
+      src: [audioUrl],
       format: ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac'],
       html5: true,
       volume: initialVolume,
@@ -87,8 +105,21 @@ export function useAudioPlayer() {
         nextSong();
       },
       onloaderror: (_, error) => {
-        console.error('Audio load error:', error);
+        console.error('Audio load error:', error, 'URL:', audioUrl);
         isLoadingRef.current = false;
+        
+        // Try to recreate the blob URL if it might have been revoked
+        if (currentSong.audioData) {
+          console.log('Attempting to recreate audio URL...');
+          const newUrl = createAudioUrl(currentSong);
+          if (newUrl && newUrl !== audioUrl) {
+            // Update the song's filePath and retry
+            currentSong.filePath = newUrl;
+            currentSongIdRef.current = null; // Force reload
+            return;
+          }
+        }
+        
         setPlaying(false);
         setError('לא ניתן לטעון את הקובץ. ייתכן שהקובץ פגום או בפורמט לא נתמך.');
       },
