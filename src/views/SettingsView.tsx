@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Switch, Label, Button, Text } from '@fluentui/react-components';
-import { Folder24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Switch, Label, Button, Text, Input } from '@fluentui/react-components';
+import { Folder24Regular, Delete24Regular, Add24Regular } from '@fluentui/react-icons';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';
+import { getArtistFilters, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
 
 interface SettingsViewProps {
   isDark: boolean;
@@ -24,9 +25,13 @@ const ACCENT_COLORS = [
 
 export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentColor = 'blue', onAccentColorChange }: SettingsViewProps) {
   const [folders, setFolders] = useState<WatchedFolder[]>([]);
+  const [filters, setFilters] = useState<ArtistFilters>({ whitelist: [], blacklist: [] });
+  const [newWhitelistArtist, setNewWhitelistArtist] = useState('');
+  const [newBlacklistArtist, setNewBlacklistArtist] = useState('');
 
   useEffect(() => {
     loadFolders();
+    setFilters(getArtistFilters());
   }, []);
 
   const loadFolders = async () => {

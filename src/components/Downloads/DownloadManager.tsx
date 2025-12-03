@@ -23,10 +23,11 @@ import {
 } from '@fluentui/react-icons';
 import { DownloadTask } from '../../types';
 import {
-  getNewPostsSinceLastSync,
   getBlogSyncStatus,
+  getBlogSyncState,
   markPostAsDownloaded,
   formatPostDate,
+  fetchPostsByDate,
   BlogPost,
 } from '../../utils/blogScraper';
 import { scrapeAudioFiles, ScrapeResult } from '../../utils/downloadAudio';
@@ -142,9 +143,19 @@ export function DownloadManager({
     setError(null);
 
     try {
-      const posts = await getNewPostsSinceLastSync();
-      setNewPosts(posts);
-      setSyncStatus(getBlogSyncStatus());
+      // Always fetch current month
+      const now = new Date();
+      const posts = await fetchPostsByDate(now.getFullYear(), now.getMonth() + 1);
+      
+      // Filter out already downloaded posts
+      const state = getBlogSyncStatus();
+      const syncState = getBlogSyncState();
+      const newPostsFiltered = posts.filter(
+        (post) => !syncState.downloadedPostIds.includes(post.id)
+      );
+      
+      setNewPosts(newPostsFiltered);
+      setSyncStatus(state);
     } catch (err) {
       console.error('Error checking for updates:', err);
       setError(err instanceof Error ? err.message : 'שגיאה בבדיקת עדכונים');

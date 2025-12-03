@@ -357,3 +357,32 @@
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
+
+
+/* Month Selector */
+.smart-update__month-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-hover);
+  border-radius: var(--radius-md);
+}
+
+.month-select,
+.year-select {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.month-select:focus,
+.year-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
