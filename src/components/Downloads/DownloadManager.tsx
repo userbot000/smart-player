@@ -31,6 +31,7 @@ import {
   BlogPost,
 } from '../../utils/blogScraper';
 import { scrapeAudioFiles, ScrapeResult } from '../../utils/downloadAudio';
+import { filterUrlsByArtist } from '../../utils/artistFilters';
 import './DownloadManager.css';
 
 interface DownloadManagerProps {
@@ -165,7 +166,11 @@ export function DownloadManager({
   };
 
   const handleDownloadPost = (post: BlogPost) => {
-    onBatchDownload(post.audioUrls);
+    // Filter URLs by artist whitelist/blacklist
+    const filteredUrls = filterUrlsByArtist(post.audioUrls);
+    if (filteredUrls.length > 0) {
+      onBatchDownload(filteredUrls);
+    }
     markPostAsDownloaded(post.id);
     setSyncStatus(getBlogSyncStatus());
     setNewPosts((prev) => prev.filter((p) => p.id !== post.id));
@@ -173,7 +178,11 @@ export function DownloadManager({
 
   const handleDownloadAllNew = () => {
     for (const post of newPosts) {
-      onBatchDownload(post.audioUrls);
+      // Filter URLs by artist whitelist/blacklist
+      const filteredUrls = filterUrlsByArtist(post.audioUrls);
+      if (filteredUrls.length > 0) {
+        onBatchDownload(filteredUrls);
+      }
       markPostAsDownloaded(post.id);
     }
     setSyncStatus(getBlogSyncStatus());

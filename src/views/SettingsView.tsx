@@ -45,6 +45,44 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
     onFoldersChanged();
   };
 
+  const handleAddWhitelist = () => {
+    if (newWhitelistArtist.trim()) {
+      const updated = { ...filters };
+      if (!updated.whitelist.includes(newWhitelistArtist.trim())) {
+        updated.whitelist.push(newWhitelistArtist.trim());
+        updated.blacklist = updated.blacklist.filter((a: string) => a !== newWhitelistArtist.trim());
+        saveArtistFilters(updated);
+        setFilters(updated);
+      }
+      setNewWhitelistArtist('');
+    }
+  };
+
+  const handleAddBlacklist = () => {
+    if (newBlacklistArtist.trim()) {
+      const updated = { ...filters };
+      if (!updated.blacklist.includes(newBlacklistArtist.trim())) {
+        updated.blacklist.push(newBlacklistArtist.trim());
+        updated.whitelist = updated.whitelist.filter((a: string) => a !== newBlacklistArtist.trim());
+        saveArtistFilters(updated);
+        setFilters(updated);
+      }
+      setNewBlacklistArtist('');
+    }
+  };
+
+  const handleRemoveWhitelist = (artist: string) => {
+    const updated = { ...filters, whitelist: filters.whitelist.filter((a: string) => a !== artist) };
+    saveArtistFilters(updated);
+    setFilters(updated);
+  };
+
+  const handleRemoveBlacklist = (artist: string) => {
+    const updated = { ...filters, blacklist: filters.blacklist.filter((a: string) => a !== artist) };
+    saveArtistFilters(updated);
+    setFilters(updated);
+  };
+
   return (
     <div className="view settings-view">
       <div className="view__header">
@@ -133,6 +171,65 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
         <div className="settings-item">
           <Label htmlFor="smart-queue">תור חכם (המלצות אוטומטיות)</Label>
           <Switch id="smart-queue" defaultChecked />
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <h3 className="settings-section__title">סינון הורדות</h3>
+        <p className="settings-section__desc">
+          סנן שירים בעדכון אוטומטי לפי שם זמר או מילות מפתח
+        </p>
+
+        {/* Whitelist */}
+        <div className="filter-list">
+          <Label className="filter-list__label">רשימה לבנה (הורד רק אלה)</Label>
+          <p className="filter-list__hint">אם הרשימה לא ריקה, יורדו רק שירים שמכילים את השמות האלה</p>
+          <div className="filter-list__input">
+            <Input
+              placeholder="הוסף זמר..."
+              value={newWhitelistArtist}
+              onChange={(_, data) => setNewWhitelistArtist(data.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddWhitelist()}
+            />
+            <Button icon={<Add24Regular />} onClick={handleAddWhitelist}>הוסף</Button>
+          </div>
+          <div className="filter-list__tags">
+            {filters.whitelist.map((artist: string) => (
+              <span key={artist} className="filter-tag filter-tag--white">
+                {artist}
+                <button onClick={() => handleRemoveWhitelist(artist)}>×</button>
+              </span>
+            ))}
+            {filters.whitelist.length === 0 && (
+              <span className="filter-list__empty">ריק - כל הזמרים יורדו</span>
+            )}
+          </div>
+        </div>
+
+        {/* Blacklist */}
+        <div className="filter-list">
+          <Label className="filter-list__label">רשימה שחורה (אל תוריד)</Label>
+          <p className="filter-list__hint">שירים שמכילים את השמות האלה לא יורדו</p>
+          <div className="filter-list__input">
+            <Input
+              placeholder="הוסף זמר..."
+              value={newBlacklistArtist}
+              onChange={(_, data) => setNewBlacklistArtist(data.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddBlacklist()}
+            />
+            <Button icon={<Add24Regular />} onClick={handleAddBlacklist}>הוסף</Button>
+          </div>
+          <div className="filter-list__tags">
+            {filters.blacklist.map((artist: string) => (
+              <span key={artist} className="filter-tag filter-tag--black">
+                {artist}
+                <button onClick={() => handleRemoveBlacklist(artist)}>×</button>
+              </span>
+            ))}
+            {filters.blacklist.length === 0 && (
+              <span className="filter-list__empty">ריק - אף זמר לא חסום</span>
+            )}
+          </div>
         </div>
       </section>
 
@@ -239,6 +336,67 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
         .color-picker__color--active {
           border-color: var(--text-primary);
           transform: scale(1.15);
+        }
+        .filter-list {
+          margin-bottom: var(--space-lg);
+        }
+        .filter-list__label {
+          display: block;
+          font-weight: 600;
+          margin-bottom: var(--space-xs);
+        }
+        .filter-list__hint {
+          font-size: var(--font-size-xs);
+          color: var(--text-secondary);
+          margin: 0 0 var(--space-sm);
+        }
+        .filter-list__input {
+          display: flex;
+          gap: var(--space-sm);
+          margin-bottom: var(--space-sm);
+        }
+        .filter-list__input input {
+          flex: 1;
+        }
+        .filter-list__tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-xs);
+          min-height: 32px;
+          align-items: center;
+        }
+        .filter-list__empty {
+          font-size: var(--font-size-sm);
+          color: var(--text-disabled);
+          font-style: italic;
+        }
+        .filter-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: var(--space-xs);
+          padding: 4px 8px;
+          border-radius: var(--radius-full);
+          font-size: var(--font-size-sm);
+        }
+        .filter-tag--white {
+          background: rgba(16, 124, 16, 0.15);
+          color: #107c10;
+        }
+        .filter-tag--black {
+          background: rgba(209, 52, 56, 0.15);
+          color: #d13438;
+        }
+        .filter-tag button {
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 16px;
+          line-height: 1;
+          opacity: 0.7;
+          color: inherit;
+        }
+        .filter-tag button:hover {
+          opacity: 1;
         }
       `}</style>
     </div>
