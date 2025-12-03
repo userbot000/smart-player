@@ -64,17 +64,17 @@ export function shouldDownload(title: string): boolean {
 
   // If whitelist is not empty, only allow whitelisted artists
   if (filters.whitelist.length > 0) {
-    const isWhitelisted = filters.whitelist.some(artist => 
+    const isWhitelisted = filters.whitelist.some(artist =>
       lowerTitle.includes(artist.toLowerCase())
     );
     if (!isWhitelisted) return false;
   }
 
   // Check blacklist
-  const isBlacklisted = filters.blacklist.some(artist => 
+  const isBlacklisted = filters.blacklist.some(artist =>
     lowerTitle.includes(artist.toLowerCase())
   );
-  
+
   return !isBlacklisted;
 }
 

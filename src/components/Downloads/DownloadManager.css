@@ -390,3 +390,19 @@
   outline: none;
   border-color: var(--color-primary);
 }
+
+
+/* YouTube Progress */
+.yt-progress {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-hover);
+  border-radius: var(--radius-md);
+}
+
+.yt-progress__message {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+}

@@ -18,6 +18,7 @@ import {
   ArrowSync24Regular,
   Info24Regular,
   Open24Regular,
+  Video24Regular,
 } from '@fluentui/react-icons';
 import { DownloadTask } from '../../types';
 import {
@@ -30,6 +31,7 @@ import {
 } from '../../utils/blogScraper';
 
 import { filterUrlsByArtist } from '../../utils/artistFilters';
+import { downloadYouTubeAudio, updateYtDlp, YtDownloadProgress } from '../../utils/ytDownloader';
 import './DownloadManager.css';
 
 interface DownloadManagerProps {
@@ -53,6 +55,13 @@ export function DownloadManager({
   const [syncStatus, setSyncStatus] = useState(getBlogSyncStatus());
   const [error, setError] = useState<string | null>(null);
   
+  // YouTube download state
+  const [ytUrl, setYtUrl] = useState('');
+  const [ytDownloading, setYtDownloading] = useState(false);
+  const [ytProgress, setYtProgress] = useState<YtDownloadProgress | null>(null);
+  const [ytError, setYtError] = useState<string | null>(null);
+  const [ytUpdating, setYtUpdating] = useState(false);
+  
 
 
   useEffect(() => {
@@ -64,6 +73,58 @@ export function DownloadManager({
     if (url.trim()) {
       onStartDownload(url.trim());
       setUrl('');
+    }
+  };
+
+  const handleYouTubeDownload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ytUrl.trim()) return;
+
+    setYtDownloading(true);
+    setYtError(null);
+    setYtProgress({ percent: 0, status: 'checking', message: 'מתחיל...' });
+
+    try {
+      const result = await downloadYouTubeAudio(ytUrl.trim(), (progress) => {
+        setYtProgress(progress);
+      });
+
+      if (result.success) {
+        setYtProgress({ percent: 100, status: 'done', message: `הורד: ${result.title}` });
+        setYtUrl('');
+      } else {
+        setYtError(result.error || 'שגיאה בהורדה');
+        setYtProgress(null);
+      }
+    } catch (err) {
+      setYtError(err instanceof Error ? err.message : 'שגיאה בהורדה');
+      setYtProgress(null);
+    } finally {
+      setYtDownloading(false);
+    }
+  };
+
+  const handleUpdateYtDlp = async () => {
+    setYtUpdating(true);
+    setYtError(null);
+    setYtProgress({ percent: 0, status: 'checking', message: 'מעדכן yt-dlp...' });
+    
+    try {
+      const success = await updateYtDlp((msg) => {
+        setYtProgress({ percent: 50, status: 'checking', message: msg });
+      });
+      
+      if (success) {
+        setYtProgress({ percent: 100, status: 'done', message: 'yt-dlp עודכן בהצלחה!' });
+      } else {
+        setYtError('לא ניתן לעדכן. נסה: winget upgrade yt-dlp');
+        setYtProgress(null);
+      }
+    } catch {
+      setYtError('שגיאה בעדכון');
+      setYtProgress(null);
+    } finally {
+      setYtUpdating(false);
     }
   };
 
@@ -240,9 +301,60 @@ export function DownloadManager({
         )}
       </div>
 
+      {/* YouTube Download */}
+      <div className="download-manager__manual">
+        <div className="smart-update__header">
+          <h3>הורדה מיוטיוב</h3>
+          <Button
+            appearance="subtle"
+            icon={ytUpdating ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
+            onClick={handleUpdateYtDlp}
+            disabled={ytUpdating || ytDownloading}
+            title="עדכן yt-dlp"
+          >
+            עדכן
+          </Button>
+        </div>
+        <p className="download-manager__hint">
+          הדבק קישור YouTube להורדת אודיו באיכות גבוהה
+        </p>
+        <form className="download-manager__form" onSubmit={handleYouTubeDownload}>
+          <Input
+            placeholder="https://youtube.com/watch?v=..."
+            contentBefore={<Video24Regular />}
+            value={ytUrl}
+            onChange={(_, data) => setYtUrl(data.value)}
+            className="download-manager__input"
+            disabled={ytDownloading}
+          />
+          <Button
+            appearance="primary"
+            icon={ytDownloading ? <Spinner size="tiny" /> : <ArrowDownload24Regular />}
+            type="submit"
+            disabled={!ytUrl.trim() || ytDownloading}
+          >
+            {ytDownloading ? 'מוריד...' : 'הורד'}
+          </Button>
+        </form>
+        {ytProgress && (
+          <div className="yt-progress">
+            <span className="yt-progress__message">{ytProgress.message}</span>
+            {ytProgress.status === 'downloading' && (
+              <ProgressBar value={ytProgress.percent / 100} />
+            )}
+          </div>
+        )}
+        {ytError && (
+          <div className="smart-update__error">
+            <Dismiss24Regular className="icon--error" />
+            <span>{ytError}</span>
+          </div>
+        )}
+      </div>
+
       {/* Direct Download */}
       <div className="download-manager__manual">
-        <h3>הורדה</h3>
+        <h3>הורדה ישירה</h3>
         <p className="download-manager__hint">
           הדבק קישור ישיר לקובץ אודיו (mp3, wav, flac...)
         </p>
