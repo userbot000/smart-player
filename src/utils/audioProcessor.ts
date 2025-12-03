@@ -168,6 +168,7 @@ export async function writeId3Tags(
     genre?: string;
     year?: string;
     comment?: string;
+    coverImage?: ArrayBuffer;
   }
 ): Promise<Blob> {
   const module = await import('browser-id3-writer');
@@ -185,6 +186,16 @@ export async function writeId3Tags(
   if (tags.year) writer.setFrame('TYER', tags.year);
   if (tags.comment) writer.setFrame('COMM', { description: '', text: tags.comment, language: 'heb' });
   
+  // Add cover image if provided
+  if (tags.coverImage) {
+    writer.setFrame('APIC', {
+      type: 3, // Front cover
+      data: new Uint8Array(tags.coverImage),
+      description: 'Cover',
+      useUnicodeEncoding: false,
+    });
+  }
+  
   writer.addTag();
   
   return writer.getBlob();
@@ -200,6 +211,7 @@ export async function updateAndSaveWithTags(
     artist?: string;
     album?: string;
     genre?: string;
+    coverImage?: ArrayBuffer;
   },
   fileName: string,
   originalPath?: string

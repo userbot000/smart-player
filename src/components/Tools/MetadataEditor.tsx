@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Button,
   Input,
@@ -9,8 +9,9 @@ import {
 } from '@fluentui/react-components';
 import {
   Tag24Regular,
-  MusicNote224Regular,
   Save24Regular,
+  Image24Regular,
+  Delete24Regular,
 } from '@fluentui/react-icons';
 import { Song } from '../../types';
 import { useToast } from '../Toast/ToastProvider';
@@ -36,8 +37,11 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
     album: '',
     genre: '',
   });
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [coverImageData, setCoverImageData] = useState<ArrayBuffer | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showError } = useToast();
 
   const handleSongSelect = (songId: string) => {
@@ -50,12 +54,51 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
         album: song.album || '',
         genre: song.genre || '',
       });
+      setCoverImage(song.coverUrl || null);
+      setCoverImageData(null);
       setHasChanges(false);
     }
   };
 
   const handleFieldChange = (field: keyof EditableMetadata, value: string) => {
     setMetadata((prev) => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showError('יש לבחור קובץ תמונה');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setCoverImage(dataUrl);
+      
+      // Also store as ArrayBuffer for ID3 tag
+      const arrayReader = new FileReader();
+      arrayReader.onload = (e) => {
+        setCoverImageData(e.target?.result as ArrayBuffer);
+      };
+      arrayReader.readAsArrayBuffer(file);
+      
+      setHasChanges(true);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveCover = () => {
+    setCoverImage(null);
+    setCoverImageData(null);
     setHasChanges(true);
   };
 
@@ -67,6 +110,8 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
         album: selectedSong.album || '',
         genre: selectedSong.genre || '',
       });
+      setCoverImage(selectedSong.coverUrl || null);
+      setCoverImageData(null);
       setHasChanges(false);
     }
   };
@@ -81,10 +126,9 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
 
     try {
       const fileName = `${metadata.title} - ${metadata.artist}.mp3`;
-      // Pass originalPath for Tauri to save to original file
       await updateAndSaveWithTags(
         selectedSong.audioData,
-        metadata,
+        { ...metadata, coverImage: coverImageData || undefined },
         fileName,
         selectedSong.originalPath
       );
@@ -102,21 +146,11 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
     }
   };
 
-  // Common genres for suggestions
   const genres = [
-    'חסידי',
-    'מזרחי',
-    'פופ',
-    'רוק',
-    'ג\'אז',
-    'קלאסי',
-    'אלקטרוני',
-    'היפ הופ',
-    'ווקאלי',
-    'חתונות',
-    'ילדים',
-    'אחר',
+    'חסידי', 'מזרחי', 'פופ', 'רוק', 'ג\'אז', 'קלאסי',
+    'אלקטרוני', 'היפ הופ', 'ווקאלי', 'חתונות', 'ילדים', 'אחר',
   ];
+
 
   return (
     <div className="metadata-editor">
@@ -137,12 +171,32 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
 
       {selectedSong && (
         <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={{ display: 'none' }}
+          />
+
           <div className="metadata-editor__song-info">
-            <div className="metadata-editor__cover">
-              {selectedSong.coverUrl ? (
-                <img src={selectedSong.coverUrl} alt={selectedSong.title} />
+            <div 
+              className="metadata-editor__cover metadata-editor__cover--editable"
+              onClick={() => fileInputRef.current?.click()}
+              title="לחץ להחלפת תמונה"
+            >
+              {coverImage ? (
+                <>
+                  <img src={coverImage} alt={selectedSong.title} />
+                  <div className="metadata-editor__cover-overlay">
+                    <Image24Regular />
+                  </div>
+                </>
               ) : (
-                <MusicNote224Regular />
+                <div className="metadata-editor__cover-empty">
+                  <Image24Regular />
+                  <span>הוסף תמונה</span>
+                </div>
               )}
             </div>
             <div className="metadata-editor__current">
@@ -152,6 +206,17 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
                 <Text size={200} className="metadata-editor__filename">
                   {selectedSong.fileName}
                 </Text>
+              )}
+              {coverImage && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Delete24Regular />}
+                  onClick={handleRemoveCover}
+                  className="metadata-editor__remove-cover"
+                >
+                  הסר תמונה
+                </Button>
               )}
             </div>
           </div>
@@ -228,6 +293,7 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
         </div>
       )}
 
+
       <style>{`
         .metadata-editor__section {
           margin-bottom: var(--space-lg);
@@ -238,7 +304,7 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
         }
         .metadata-editor__song-info {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: var(--space-md);
           padding: var(--space-md);
           background: var(--surface-hover);
@@ -246,8 +312,8 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
           margin-bottom: var(--space-lg);
         }
         .metadata-editor__cover {
-          width: 64px;
-          height: 64px;
+          width: 100px;
+          height: 100px;
           border-radius: var(--radius-md);
           background: var(--surface-card);
           display: flex;
@@ -255,14 +321,50 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
           justify-content: center;
           overflow: hidden;
           flex-shrink: 0;
+          position: relative;
+        }
+        .metadata-editor__cover--editable {
+          cursor: pointer;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .metadata-editor__cover--editable:hover {
+          transform: scale(1.02);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .metadata-editor__cover img {
           width: 100%;
           height: 100%;
           object-fit: cover;
         }
-        .metadata-editor__cover svg {
+        .metadata-editor__cover-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.15s;
+          color: white;
+        }
+        .metadata-editor__cover--editable:hover .metadata-editor__cover-overlay {
+          opacity: 1;
+        }
+        .metadata-editor__cover-overlay svg {
           font-size: 32px;
+        }
+        .metadata-editor__cover-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: var(--space-xs);
+          color: var(--text-secondary);
+          font-size: var(--font-size-xs);
+        }
+        .metadata-editor__cover-empty svg {
+          font-size: 28px;
+        }
+        .metadata-editor__cover svg {
           color: var(--text-secondary);
         }
         .metadata-editor__current {
@@ -277,6 +379,9 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
           font-family: monospace;
           font-size: var(--font-size-xs);
           margin-top: var(--space-xs);
+        }
+        .metadata-editor__remove-cover {
+          margin-top: var(--space-sm);
         }
         .metadata-editor__fields {
           display: grid;
