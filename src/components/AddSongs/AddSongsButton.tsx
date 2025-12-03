@@ -63,7 +63,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
     setIsLoading(true);
     try {
       const files: AudioFileFromRust[] = await invoke('scan_folder', { folderPath });
-      
+
       if (files.length === 0) {
         showWarning('לא נמצאו קבצי אודיו בתיקייה');
         setIsLoading(false);
@@ -149,12 +149,12 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
 
     let currentFolderId = targetFolderId;
     let existingFileNames = new Set<string>();
-    
+
     // Get folder path from first file
     const firstFile = audioFiles[0];
     const webkitPath = firstFile.webkitRelativePath;
     const detectedFolderName = targetFolderName || webkitPath.split('/')[0] || 'תיקייה חדשה';
-    
+
     // Try to get full path - in Tauri we can access it
     let fullFolderPath = detectedFolderName;
     if ((firstFile as any).path) {
@@ -195,7 +195,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
       try {
         const audioData = await fileToArrayBuffer(file);
         const metadata = await extractMetadataFromBuffer(audioData, file.name);
-        
+
         // Get original file path if available
         const originalPath = (file as any).path || '';
 
