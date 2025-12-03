@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Switch, Label, Button, Text, Input } from '@fluentui/react-components';
-import { Folder24Regular, Delete24Regular, Add24Regular } from '@fluentui/react-icons';
+import { Switch, Label, Button, Text, Input, Spinner } from '@fluentui/react-components';
+import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular } from '@fluentui/react-icons';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';
 import { getArtistFilters, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
+import {
+  getTrackedChannels,
+  addTrackedChannel,
+  removeTrackedChannel,
+  TrackedChannel,
+} from '../utils/ytChannelTracker';
 
 interface SettingsViewProps {
   isDark: boolean;
@@ -28,10 +34,17 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
   const [filters, setFilters] = useState<ArtistFilters>({ whitelist: [], blacklist: [] });
   const [newWhitelistArtist, setNewWhitelistArtist] = useState('');
   const [newBlacklistArtist, setNewBlacklistArtist] = useState('');
+  
+  // YouTube channel tracking
+  const [trackedChannels, setTrackedChannels] = useState<TrackedChannel[]>([]);
+  const [newChannelUrl, setNewChannelUrl] = useState('');
+  const [addingChannel, setAddingChannel] = useState(false);
+  const [channelError, setChannelError] = useState<string | null>(null);
 
   useEffect(() => {
     loadFolders();
     setFilters(getArtistFilters());
+    setTrackedChannels(getTrackedChannels());
   }, []);
 
   const loadFolders = async () => {
@@ -81,6 +94,32 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
     const updated = { ...filters, blacklist: filters.blacklist.filter((a: string) => a !== artist) };
     saveArtistFilters(updated);
     setFilters(updated);
+  };
+
+  const handleAddChannel = async () => {
+    if (!newChannelUrl.trim()) return;
+    
+    setAddingChannel(true);
+    setChannelError(null);
+    
+    try {
+      const result = await addTrackedChannel(newChannelUrl.trim());
+      if (result.success) {
+        setTrackedChannels(getTrackedChannels());
+        setNewChannelUrl('');
+      } else {
+        setChannelError(result.error || 'שגיאה בהוספת ערוץ');
+      }
+    } catch {
+      setChannelError('שגיאה בהוספת ערוץ');
+    } finally {
+      setAddingChannel(false);
+    }
+  };
+
+  const handleRemoveChannel = (channelId: string) => {
+    removeTrackedChannel(channelId);
+    setTrackedChannels(getTrackedChannels());
   };
 
   return (
@@ -171,6 +210,63 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
         <div className="settings-item">
           <Label htmlFor="smart-queue">תור חכם (המלצות אוטומטיות)</Label>
           <Switch id="smart-queue" defaultChecked />
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <h3 className="settings-section__title">מעקב ערוצי YouTube</h3>
+        <p className="settings-section__desc">
+          קבל התראה כשיש סרטון חדש בערוץ והורד אוטומטית
+        </p>
+        
+        <div className="filter-list__input">
+          <Input
+            placeholder="https://youtube.com/@channel או קישור לערוץ"
+            value={newChannelUrl}
+            onChange={(_, data) => setNewChannelUrl(data.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
+            disabled={addingChannel}
+          />
+          <Button 
+            icon={addingChannel ? <Spinner size="tiny" /> : <Add24Regular />} 
+            onClick={handleAddChannel}
+            disabled={addingChannel || !newChannelUrl.trim()}
+          >
+            {addingChannel ? 'מוסיף...' : 'הוסף'}
+          </Button>
+        </div>
+        
+        {channelError && (
+          <p className="settings-error">{channelError}</p>
+        )}
+        
+        <div className="settings-channels">
+          {trackedChannels.length === 0 ? (
+            <div className="settings-empty">
+              <Video24Regular />
+              <span>אין ערוצים במעקב</span>
+            </div>
+          ) : (
+            trackedChannels.map((channel) => (
+              <div key={channel.id} className="settings-channel">
+                <div className="settings-channel__info">
+                  <Video24Regular className="settings-channel__icon" />
+                  <div className="settings-channel__text">
+                    <Text weight="semibold">{channel.name}</Text>
+                    <Text size={200} className="settings-channel__meta">
+                      בדיקה אחרונה: {new Date(channel.lastCheck).toLocaleDateString('he-IL')}
+                    </Text>
+                  </div>
+                </div>
+                <Button
+                  appearance="subtle"
+                  icon={<Delete24Regular />}
+                  onClick={() => handleRemoveChannel(channel.id)}
+                  title="הסר ערוץ"
+                />
+              </div>
+            ))
+          )}
         </div>
       </section>
 
@@ -397,6 +493,41 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
         }
         .filter-tag button:hover {
           opacity: 1;
+        }
+        .settings-channels {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-sm);
+          margin-top: var(--space-md);
+        }
+        .settings-channel {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: var(--space-md);
+          background: var(--surface-hover);
+          border-radius: var(--radius-md);
+        }
+        .settings-channel__info {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+          flex: 1;
+        }
+        .settings-channel__icon {
+          color: #ff0000;
+        }
+        .settings-channel__text {
+          text-align: right;
+        }
+        .settings-channel__meta {
+          display: block;
+          color: var(--text-secondary);
+        }
+        .settings-error {
+          color: var(--color-error);
+          font-size: var(--font-size-sm);
+          margin: var(--space-sm) 0;
         }
       `}</style>
     </div>

@@ -12,6 +12,7 @@ import { HomeView, LibraryView, AlbumsView, ArtistsView, DownloadsView, Settings
 import { Song, DownloadTask } from './types';
 import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong } from './db/database';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
+import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
 
 import './styles/index.css';
 
@@ -184,6 +185,16 @@ function App() {
 
   useEffect(() => {
     loadSongs();
+    
+    // Start YouTube channel tracking
+    startChannelTracking((channel, videos) => {
+      console.log(`New videos from ${channel.name}:`, videos);
+      // Could auto-download here if desired
+    });
+    
+    return () => {
+      stopChannelTracking();
+    };
   }, []);
 
   const loadSongs = async () => {
