@@ -1,0 +1,205 @@
+/* CSS Variables */
+:root {
+  --accent-primary: #0078d4;
+  --accent-secondary: #106ebe;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a0a0a0;
+  --surface-primary: #1a1a1a;
+  --surface-secondary: #242424;
+  --surface-elevated: #2d2d2d;
+  --surface-hover: rgba(255, 255, 255, 0.05);
+  --surface-selected: rgba(0, 120, 212, 0.15);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --success: #107c10;
+  --error: #d13438;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* App Layout */
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  direction: rtl;
+}
+
+.app__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+
+/* Home View */
+.home-view {
+  padding: 24px;
+}
+
+.home-view__welcome {
+  text-align: center;
+  padding: 48px 24px;
+  margin-bottom: 32px;
+}
+
+.home-view__welcome h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--accent-primary), #50e6ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.home-view__welcome p {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.home-view__empty {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--text-secondary);
+}
+
+.home-view__empty p {
+  margin-bottom: 8px;
+}
+
+/* Settings View */
+.settings-view {
+  padding: 24px;
+  max-width: 600px;
+}
+
+.settings-view h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.settings-view__section {
+  background: var(--surface-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.settings-view__section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-view__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.settings-view__toggle input {
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Fluent UI Overrides */
+.fui-FluentProvider {
+  height: 100%;
+  background: transparent !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.home-view__welcome,
+.song-list__header,
+.download-manager__header {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .home-view__welcome h1 {
+    font-size: 28px;
+  }
+  
+  .home-view {
+    padding: 16px;
+  }
+}
+
+
+/* Library View */
+.library-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.library-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.library-view__header h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}

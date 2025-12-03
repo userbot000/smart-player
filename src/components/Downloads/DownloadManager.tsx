@@ -1,0 +1,295 @@
+import { useState, useEffect } from 'react';
+import {
+  Input,
+  Button,
+  ProgressBar,
+  Card,
+  CardHeader,
+  Text,
+  Spinner,
+  Badge,
+} from '@fluentui/react-components';
+import {
+  ArrowDownload24Regular,
+  Checkmark24Regular,
+  Dismiss24Regular,
+  Delete24Regular,
+  Link24Regular,
+  ArrowSync24Regular,
+  Info24Regular,
+  Open24Regular,
+} from '@fluentui/react-icons';
+import { DownloadTask } from '../../types';
+import {
+  getNewPostsSinceLastSync,
+  getBlogSyncStatus,
+  markPostAsDownloaded,
+  formatPostDate,
+  BlogPost,
+} from '../../utils/blogScraper';
+import './DownloadManager.css';
+
+interface DownloadManagerProps {
+  downloads: DownloadTask[];
+  onStartDownload: (url: string) => void;
+  onCancelDownload: (id: string) => void;
+  onRemoveDownload: (id: string) => void;
+  onBatchDownload: (urls: string[]) => void;
+}
+
+export function DownloadManager({
+  downloads,
+  onStartDownload,
+  onCancelDownload,
+  onRemoveDownload,
+  onBatchDownload,
+}: DownloadManagerProps) {
+  const [url, setUrl] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
+  const [newPosts, setNewPosts] = useState<BlogPost[]>([]);
+  const [syncStatus, setSyncStatus] = useState(getBlogSyncStatus());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSyncStatus(getBlogSyncStatus());
+  }, [downloads]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (url.trim()) {
+      onStartDownload(url.trim());
+      setUrl('');
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setIsChecking(true);
+    setNewPosts([]);
+    setError(null);
+
+    try {
+      const posts = await getNewPostsSinceLastSync();
+      setNewPosts(posts);
+      setSyncStatus(getBlogSyncStatus());
+    } catch (err) {
+      console.error('Error checking for updates:', err);
+      setError(err instanceof Error ? err.message : 'שגיאה בבדיקת עדכונים');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleDownloadPost = (post: BlogPost) => {
+    onBatchDownload(post.audioUrls);
+    markPostAsDownloaded(post.id);
+    setSyncStatus(getBlogSyncStatus());
+    setNewPosts((prev) => prev.filter((p) => p.id !== post.id));
+  };
+
+  const handleDownloadAllNew = () => {
+    for (const post of newPosts) {
+      onBatchDownload(post.audioUrls);
+      markPostAsDownloaded(post.id);
+    }
+    setSyncStatus(getBlogSyncStatus());
+    setNewPosts([]);
+  };
+
+  const getStatusText = (status: DownloadTask['status']) => {
+    const map = {
+      pending: 'ממתין...',
+      downloading: 'מוריד...',
+      completed: 'הושלם',
+      error: 'שגיאה',
+    };
+    return map[status];
+  };
+
+  const getStatusIcon = (status: DownloadTask['status']) => {
+    switch (status) {
+      case 'completed':
+        return <Checkmark24Regular className="icon--success" />;
+      case 'error':
+        return <Dismiss24Regular className="icon--error" />;
+      default:
+        return <ArrowDownload24Regular className={status === 'downloading' ? 'icon--pulse' : ''} />;
+    }
+  };
+
+  const totalNewFiles = newPosts.reduce((sum, p) => sum + p.audioUrls.length, 0);
+
+  return (
+    <div className="download-manager">
+      {/* Smart Update Section */}
+      <div className="download-manager__smart-update">
+        <div className="smart-update__header">
+          <h3>עדכון שירים חדשים</h3>
+          <Button
+            appearance="primary"
+            icon={isChecking ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
+            onClick={handleCheckForUpdates}
+            disabled={isChecking}
+          >
+            {isChecking ? 'בודק...' : 'בדוק עדכונים'}
+          </Button>
+        </div>
+
+        <div className="smart-update__status">
+          <Info24Regular />
+          <span>
+            {syncStatus.lastSync
+              ? `סנכרון אחרון: ${syncStatus.lastSync} | הורדו ${syncStatus.downloadedCount} פוסטים`
+              : 'טרם בוצע סנכרון - לחץ "בדוק עדכונים" להתחיל'}
+          </span>
+        </div>
+
+        {error && (
+          <div className="smart-update__error">
+            <Dismiss24Regular className="icon--error" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {newPosts.length > 0 && (
+          <div className="smart-update__results">
+            <div className="smart-update__results-header">
+              <span>
+                נמצאו {newPosts.length} פוסטים חדשים ({totalNewFiles} שירים)
+              </span>
+              <Button appearance="primary" onClick={handleDownloadAllNew}>
+                הורד הכל
+              </Button>
+            </div>
+
+            <div className="smart-update__posts">
+              {newPosts.map((post) => (
+                <Card key={post.id} className="post-card">
+                  <CardHeader
+                    image={
+                      post.imageUrl ? (
+                        <img src={post.imageUrl} alt="" className="post-card__image" />
+                      ) : undefined
+                    }
+                    header={<Text weight="semibold">{post.title}</Text>}
+                    description={
+                      <div className="post-card__meta">
+                        {post.date && <span>{formatPostDate(post.date)}</span>}
+                        <Badge appearance="filled" color="informative">
+                          {post.audioUrls.length} שירים
+                        </Badge>
+                      </div>
+                    }
+                    action={
+                      <div className="post-card__actions">
+                        {post.postUrl && (
+                          <Button
+                            appearance="subtle"
+                            icon={<Open24Regular />}
+                            as="a"
+                            href={post.postUrl}
+                            target="_blank"
+                            title="פתח בדפדפן"
+                          />
+                        )}
+                        <Button
+                          appearance="outline"
+                          icon={<ArrowDownload24Regular />}
+                          onClick={() => handleDownloadPost(post)}
+                        >
+                          הורד
+                        </Button>
+                      </div>
+                    }
+                  />
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!isChecking && !error && newPosts.length === 0 && syncStatus.lastSync && (
+          <div className="smart-update__empty">
+            <Checkmark24Regular className="icon--success" />
+            <span>הכל מעודכן!</span>
+          </div>
+        )}
+      </div>
+
+      {/* Manual URL Input */}
+      <div className="download-manager__manual">
+        <h3>הורדה ידנית</h3>
+        <form className="download-manager__form" onSubmit={handleSubmit}>
+          <Input
+            placeholder="הדבק קישור ישיר לקובץ אודיו (mp3, wav, flac...)"
+            contentBefore={<Link24Regular />}
+            value={url}
+            onChange={(_, data) => setUrl(data.value)}
+            className="download-manager__input"
+          />
+          <Button
+            appearance="primary"
+            icon={<ArrowDownload24Regular />}
+            type="submit"
+            disabled={!url.trim()}
+          >
+            הורד
+          </Button>
+        </form>
+      </div>
+
+      {/* Downloads List */}
+      <div className="download-manager__list">
+        <h3>הורדות ({downloads.length})</h3>
+
+        {downloads.length === 0 ? (
+          <div className="empty-state">
+            <ArrowDownload24Regular className="empty-state__icon" />
+            <p className="empty-state__title">אין הורדות</p>
+            <p className="empty-state__text">בדוק עדכונים או הדבק קישור</p>
+          </div>
+        ) : (
+          <div className="download-manager__items">
+            {downloads.map((download) => (
+              <Card key={download.id} className="download-item">
+                <CardHeader
+                  image={getStatusIcon(download.status)}
+                  header={<Text weight="semibold">{download.title}</Text>}
+                  description={
+                    <span className="download-item__status">
+                      {getStatusText(download.status)}
+                      {download.status === 'downloading' && ` (${Math.round(download.progress)}%)`}
+                      {download.error && (
+                        <span className="download-item__error"> - {download.error}</span>
+                      )}
+                    </span>
+                  }
+                  action={
+                    <>
+                      {download.status === 'downloading' && (
+                        <Button
+                          appearance="subtle"
+                          icon={<Dismiss24Regular />}
+                          onClick={() => onCancelDownload(download.id)}
+                        />
+                      )}
+                      {(download.status === 'completed' || download.status === 'error') && (
+                        <Button
+                          appearance="subtle"
+                          icon={<Delete24Regular />}
+                          onClick={() => onRemoveDownload(download.id)}
+                        />
+                      )}
+                    </>
+                  }
+                />
+                {download.status === 'downloading' && (
+                  <ProgressBar value={download.progress / 100} className="download-item__progress" />
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,228 @@
+/* ===================================
+   Smart Player - Main Stylesheet
+   =================================== */
+
+@import './variables.css';
+@import './reset.css';
+
+/* ===================================
+   App Layout
+   =================================== */
+
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: var(--surface-app);
+  direction: rtl;
+}
+
+.app__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.app__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Mobile: Add padding for hamburger menu button */
+@media (max-width: 768px) {
+  .app__content {
+    padding-top: 56px;
+  }
+}
+
+/* ===================================
+   Views
+   =================================== */
+
+.view {
+  padding: var(--space-lg);
+  animation: fadeIn var(--transition-normal);
+}
+
+.view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.view__title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.view__subtitle {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  margin: var(--space-xs) 0 0;
+}
+
+/* Home View */
+.home-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-view__header {
+  text-align: center;
+  padding: var(--space-xl) var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.home-view__logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: var(--space-sm);
+}
+
+.home-view__title {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  margin: 0 0 var(--space-sm);
+  color: var(--color-primary);
+}
+
+.home-view__subtitle {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-state__icon {
+  font-size: 64px;
+  margin-bottom: var(--space-md);
+  opacity: 0.5;
+}
+
+.empty-state__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+.empty-state__text {
+  font-size: var(--font-size-md);
+}
+
+/* ===================================
+   Animations
+   =================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ===================================
+   Utilities
+   =================================== */
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+
+/* ===================================
+   RTL Support
+   =================================== */
+
+/* Ensure all flex containers respect RTL */
+.app,
+.view__header,
+.song-list__header,
+.song-list__actions,
+.song-item,
+.player,
+.player__song,
+.player__buttons,
+.player__progress,
+.player__volume,
+.sidebar__logo,
+.settings-item {
+  /* flex-direction is already row by default, RTL handles the rest */
+}
+
+/* Fix icon positioning in RTL */
+[dir="rtl"] .fui-Input__contentBefore {
+  margin-left: var(--space-sm);
+  margin-right: 0;
+}
+
+/* Ensure proper text alignment */
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+/* Fix slider direction */
+[dir="rtl"] .fui-Slider {
+  direction: ltr;
+}
+
+
+/* Downloads View */
+.downloads-view__header {
+  text-align: right;
+  margin-bottom: var(--space-lg);
+}
+
+.downloads-view__header .view__title {
+  margin-bottom: var(--space-xs);
+}
+
+.downloads-view__header .view__subtitle {
+  margin: 0;
+}
