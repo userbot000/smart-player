@@ -166,27 +166,11 @@
 }
 
 /* ===================================
-   Tablet - Collapsed Sidebar
+   Tablet - Keep Sidebar Full
    =================================== */
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .sidebar {
-    width: var(--sidebar-collapsed);
-    padding: var(--space-sm) var(--space-xs);
-  }
-
-  .sidebar__logo-text,
-  .sidebar__nav-label {
-    display: none;
-  }
-
-  .sidebar__logo {
-    justify-content: center;
-    padding: var(--space-sm);
-  }
-
-  .sidebar__nav-item {
-    justify-content: center !important;
-    padding: var(--space-sm) !important;
+    width: var(--sidebar-width);
   }
 }
