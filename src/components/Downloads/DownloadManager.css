@@ -400,9 +400,14 @@
   border-radius: var(--radius-md);
 }
 
+.yt-progress__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
 .yt-progress__message {
-  display: block;
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-xs);
 }

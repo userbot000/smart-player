@@ -338,9 +338,20 @@ export function DownloadManager({
         </form>
         {ytProgress && (
           <div className="yt-progress">
-            <span className="yt-progress__message">{ytProgress.message}</span>
+            <div className="yt-progress__header">
+              {(ytProgress.status === 'checking' || ytProgress.status === 'converting') && (
+                <Spinner size="tiny" />
+              )}
+              {ytProgress.status === 'done' && (
+                <Checkmark24Regular className="icon--success" />
+              )}
+              <span className="yt-progress__message">{ytProgress.message}</span>
+            </div>
             {ytProgress.status === 'downloading' && (
               <ProgressBar value={ytProgress.percent / 100} />
+            )}
+            {ytProgress.status === 'checking' && (
+              <ProgressBar />
             )}
           </div>
         )}
