@@ -9,7 +9,6 @@ import {
 import { Sidebar, PlayerControls } from './components';
 import { ToastProvider } from './components/Toast/ToastProvider';
 import { HomeView, LibraryView, AlbumsView, ArtistsView, DownloadsView, SettingsView, ToolsView } from './views';
-import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { Song, DownloadTask } from './types';
 import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong } from './db/database';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
@@ -25,8 +24,6 @@ function App() {
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [isDark, setIsDark] = useState(false);
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || 'blue');
-
-  useAudioPlayer();
 
   // Brand color palettes for each accent color
   const brandColors: Record<string, BrandVariants> = useMemo(
