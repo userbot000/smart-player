@@ -108,6 +108,7 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
                     mode="rescan"
                     folderId={folder.id}
                     folderName={folder.name}
+                    folderPath={folder.path}
                   />
                   <Button
                     appearance="subtle"

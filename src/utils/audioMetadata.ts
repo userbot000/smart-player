@@ -80,3 +80,58 @@ export async function extractMetadata(file: File): Promise<AudioMetadata> {
     };
   }
 }
+
+
+export async function extractMetadataFromBuffer(buffer: ArrayBuffer, fileName: string): Promise<AudioMetadata> {
+  try {
+    console.log(`Parsing metadata from buffer for: ${fileName}`);
+    const uint8Array = new Uint8Array(buffer);
+    const metadata = await musicMetadata.parseBuffer(uint8Array);
+    console.log('Metadata parsed:', metadata.common);
+
+    let coverUrl: string | undefined;
+
+    if (metadata.common.picture && metadata.common.picture.length > 0) {
+      const picture = metadata.common.picture[0];
+      const blob = new Blob([picture.data], { type: picture.format });
+      coverUrl = await blobToDataUrl(blob);
+    }
+
+    const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+    let title = metadata.common.title || fileNameWithoutExt;
+    let artist = metadata.common.artist || 'אמן לא ידוע';
+
+    if (!metadata.common.title && fileNameWithoutExt.includes(' - ')) {
+      const parts = fileNameWithoutExt.split(' - ');
+      artist = parts[0].trim();
+      title = parts.slice(1).join(' - ').trim();
+    }
+
+    return {
+      title,
+      artist,
+      album: metadata.common.album,
+      duration: metadata.format.duration || 0,
+      genre: metadata.common.genre?.[0],
+      coverUrl,
+    };
+  } catch (error) {
+    console.error('Error extracting metadata from buffer:', error);
+
+    const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+    let title = fileNameWithoutExt;
+    let artist = 'אמן לא ידוע';
+
+    if (fileNameWithoutExt.includes(' - ')) {
+      const parts = fileNameWithoutExt.split(' - ');
+      artist = parts[0].trim();
+      title = parts.slice(1).join(' - ').trim();
+    }
+
+    return {
+      title,
+      artist,
+      duration: 0,
+    };
+  }
+}

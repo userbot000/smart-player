@@ -6,6 +6,16 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "fs:default",
+    "dialog:default",
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "**" }]
+    },
     {
       "identifier": "http:default",
       "allow": [

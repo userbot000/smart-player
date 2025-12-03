@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Button, Spinner } from '@fluentui/react-components';
 import { FolderAdd24Regular, ArrowSync24Regular } from '@fluentui/react-icons';
+import { invoke } from '@tauri-apps/api/core';
 import { Song } from '../../types';
 import { addSong } from '../../db/database';
 import {
@@ -12,7 +13,7 @@ import {
   getSongFileNamesInFolder,
   countSongsInFolder,
 } from '../../db/watchedFolders';
-import { extractMetadata } from '../../utils/audioMetadata';
+import { extractMetadataFromBuffer } from '../../utils/audioMetadata';
 import { useToast } from '../Toast/ToastProvider';
 
 interface AddSongsButtonProps {
@@ -21,6 +22,12 @@ interface AddSongsButtonProps {
   folderId?: string;
   folderName?: string;
   folderPath?: string;
+}
+
+interface AudioFileFromRust {
+  name: string;
+  path: string;
+  data: number[];
 }
 
 const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.wma', '.opus'];
@@ -40,14 +47,98 @@ async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
 }
 
 
-export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderName }: AddSongsButtonProps) {
+export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderName, folderPath }: AddSongsButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, skipped: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showWarning, showError } = useToast();
 
+  // Rescan using Tauri - no dialog needed
+  const handleRescan = async () => {
+    if (!folderPath || !folderId) {
+      showError('נתיב התיקייה לא נמצא');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const files: AudioFileFromRust[] = await invoke('scan_folder', { folderPath });
+      
+      if (files.length === 0) {
+        showWarning('לא נמצאו קבצי אודיו בתיקייה');
+        setIsLoading(false);
+        return;
+      }
+
+      const existingFileNames = await getSongFileNamesInFolder(folderId);
+      const newFiles = files.filter(f => !existingFileNames.has(f.name));
+      const skippedCount = files.length - newFiles.length;
+
+      if (newFiles.length === 0) {
+        showSuccess(`כל ${files.length} השירים כבר קיימים בספרייה`, 'הכל מעודכן');
+        setIsLoading(false);
+        return;
+      }
+
+      setProgress({ current: 0, total: newFiles.length, skipped: skippedCount });
+
+      let addedCount = 0;
+      for (const file of newFiles) {
+        try {
+          const audioData = new Uint8Array(file.data).buffer;
+          const metadata = await extractMetadataFromBuffer(audioData, file.name);
+
+          const song: Song = {
+            id: crypto.randomUUID(),
+            title: metadata.title,
+            artist: metadata.artist,
+            album: metadata.album,
+            duration: metadata.duration,
+            genre: metadata.genre,
+            coverUrl: metadata.coverUrl,
+            filePath: file.path,
+            originalPath: file.path,
+            audioData,
+            addedAt: Date.now(),
+            playCount: 0,
+            folderId,
+            fileName: file.name,
+          };
+
+          await addSong(song);
+          addedCount++;
+          setProgress({ current: addedCount, total: newFiles.length, skipped: skippedCount });
+        } catch (err) {
+          console.error(`Error processing ${file.name}:`, err);
+        }
+      }
+
+      const totalSongs = await countSongsInFolder(folderId);
+      await updateFolderSongCount(folderId, totalSongs);
+      await updateFolderScanTime(folderId);
+
+      if (skippedCount > 0) {
+        showSuccess(`נוספו ${addedCount} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
+      } else {
+        showSuccess(`נוספו ${addedCount} שירים`, 'הושלם');
+      }
+
+      onSongsAdded();
+    } catch (error) {
+      console.error('Error rescanning folder:', error);
+      showError('שגיאה בסריקת התיקייה');
+    } finally {
+      setIsLoading(false);
+      setProgress({ current: 0, total: 0, skipped: 0 });
+    }
+  };
+
   const handleClick = () => {
-    fileInputRef.current?.click();
+    if (mode === 'rescan' && folderPath) {
+      handleRescan();
+    } else {
+      fileInputRef.current?.click();
+    }
   };
 
   const processFiles = async (audioFiles: File[], targetFolderId?: string, targetFolderName?: string) => {
@@ -58,7 +149,18 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
 
     let currentFolderId = targetFolderId;
     let existingFileNames = new Set<string>();
-    const detectedFolderName = targetFolderName || audioFiles[0].webkitRelativePath.split('/')[0] || 'תיקייה חדשה';
+    
+    // Get folder path from first file
+    const firstFile = audioFiles[0];
+    const webkitPath = firstFile.webkitRelativePath;
+    const detectedFolderName = targetFolderName || webkitPath.split('/')[0] || 'תיקייה חדשה';
+    
+    // Try to get full path - in Tauri we can access it
+    let fullFolderPath = detectedFolderName;
+    if ((firstFile as any).path) {
+      const filePath = (firstFile as any).path as string;
+      fullFolderPath = filePath.substring(0, filePath.lastIndexOf('\\') || filePath.lastIndexOf('/'));
+    }
 
     const existingFolder = await getWatchedFolderByName(detectedFolderName);
 
@@ -69,7 +171,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
       currentFolderId = crypto.randomUUID();
       const watchedFolder: WatchedFolder = {
         id: currentFolderId,
-        path: detectedFolderName,
+        path: fullFolderPath,
         name: detectedFolderName,
         addedAt: Date.now(),
         lastScanned: Date.now(),
@@ -91,8 +193,11 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
     let addedCount = 0;
     for (const file of newFiles) {
       try {
-        const metadata = await extractMetadata(file);
         const audioData = await fileToArrayBuffer(file);
+        const metadata = await extractMetadataFromBuffer(audioData, file.name);
+        
+        // Get original file path if available
+        const originalPath = (file as any).path || '';
 
         const song: Song = {
           id: crypto.randomUUID(),
@@ -103,6 +208,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
           genre: metadata.genre,
           coverUrl: metadata.coverUrl,
           filePath: '',
+          originalPath,
           audioData,
           addedAt: Date.now(),
           playCount: 0,
