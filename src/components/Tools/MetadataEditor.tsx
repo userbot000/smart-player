@@ -18,6 +18,7 @@ import { updateAndSaveWithTags } from '../../utils/audioProcessor';
 
 interface MetadataEditorProps {
   songs: Song[];
+  onSongUpdated?: () => void;
 }
 
 interface EditableMetadata {
