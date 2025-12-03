@@ -271,3 +271,89 @@
 .download-manager__manual .download-manager__form {
   margin-bottom: 0;
 }
+
+
+/* Scrape Results Section */
+.scrape-results {
+  margin-top: var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.scrape-results__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.scrape-results__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.scrape-results__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.scrape-results__list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.scrape-results__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.scrape-results__item:hover {
+  background: var(--surface-hover);
+}
+
+.scrape-results__item input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.scrape-results__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  direction: ltr;
+  text-align: left;
+}
+
+.scrape-results__size {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-disabled);
+  direction: ltr;
+}
+
+.download-manager__manual .download-manager__hint {
+  margin: 0 0 var(--space-md);
+  padding: 0;
+  background: none;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}

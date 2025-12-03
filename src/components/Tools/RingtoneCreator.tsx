@@ -30,7 +30,7 @@ export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
   const [ringtoneTitle, setRingtoneTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [dragging, setDragging] = useState<'start' | 'end' | 'range' | null>(null);
-  
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rangeRef = useRef<HTMLDivElement | null>(null);
   const dragStartX = useRef(0);
@@ -89,7 +89,7 @@ export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
 
   const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
     if (!dragging || !rangeRef.current) return;
-    
+
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const rect = rangeRef.current.getBoundingClientRect();
     const deltaPercent = (clientX - dragStartX.current) / rect.width;
@@ -105,7 +105,7 @@ export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
       const rangeDuration = dragStartValue.current.end - dragStartValue.current.start;
       let newStart = dragStartValue.current.start + deltaTime;
       let newEnd = dragStartValue.current.end + deltaTime;
-      
+
       if (newStart < 0) {
         newStart = 0;
         newEnd = rangeDuration;
@@ -114,7 +114,7 @@ export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
         newEnd = duration;
         newStart = duration - rangeDuration;
       }
-      
+
       setStartTime(newStart);
       setEndTime(newEnd);
     }
@@ -246,49 +246,49 @@ export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
             </div>
 
             {/* Range Slider */}
-            <div 
+            <div
               ref={rangeRef}
               className="range-slider"
               onClick={handleTrackClick}
             >
               {/* Track background */}
               <div className="range-slider__track" />
-              
+
               {/* Selected range (blue bar) */}
-              <div 
+              <div
                 className="range-slider__range"
-                style={{ 
-                  left: `${startPercent}%`, 
-                  width: `${endPercent - startPercent}%` 
+                style={{
+                  left: `${startPercent}%`,
+                  width: `${endPercent - startPercent}%`
                 }}
                 onMouseDown={(e) => handleDragStart(e, 'range')}
                 onTouchStart={(e) => handleDragStart(e, 'range')}
               />
-              
+
               {/* Playhead indicator */}
               {isPlaying && (
-                <div 
+                <div
                   className="range-slider__playhead"
                   style={{ left: `${startPercent + (playheadPercent * (endPercent - startPercent) / 100)}%` }}
                 />
               )}
-              
+
               {/* Start handle */}
-              <div 
+              <div
                 className="range-slider__handle range-slider__handle--start"
                 style={{ left: `${startPercent}%` }}
                 onMouseDown={(e) => handleDragStart(e, 'start')}
                 onTouchStart={(e) => handleDragStart(e, 'start')}
               />
-              
+
               {/* End handle */}
-              <div 
+              <div
                 className="range-slider__handle range-slider__handle--end"
                 style={{ left: `${endPercent}%` }}
                 onMouseDown={(e) => handleDragStart(e, 'end')}
                 onTouchStart={(e) => handleDragStart(e, 'end')}
               />
-              
+
               {/* Time markers */}
               <div className="range-slider__markers">
                 <span>0:00</span>

@@ -18,6 +18,8 @@ import {
   ArrowSync24Regular,
   Info24Regular,
   Open24Regular,
+  Search24Regular,
+  DocumentBulletList24Regular,
 } from '@fluentui/react-icons';
 import { DownloadTask } from '../../types';
 import {
@@ -27,6 +29,7 @@ import {
   formatPostDate,
   BlogPost,
 } from '../../utils/blogScraper';
+import { scrapeAudioFiles, ScrapeResult } from '../../utils/downloadAudio';
 import './DownloadManager.css';
 
 interface DownloadManagerProps {
@@ -49,6 +52,11 @@ export function DownloadManager({
   const [newPosts, setNewPosts] = useState<BlogPost[]>([]);
   const [syncStatus, setSyncStatus] = useState(getBlogSyncStatus());
   const [error, setError] = useState<string | null>(null);
+  
+  // Smart scraping state
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeResult, setScrapeResult] = useState<ScrapeResult | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setSyncStatus(getBlogSyncStatus());
@@ -60,6 +68,72 @@ export function DownloadManager({
       onStartDownload(url.trim());
       setUrl('');
     }
+  };
+
+  // Smart scrape handler
+  const handleScrapeUrl = async () => {
+    if (!url.trim()) return;
+    
+    setIsScraping(true);
+    setScrapeResult(null);
+    setSelectedFiles(new Set());
+    setError(null);
+
+    try {
+      const result = await scrapeAudioFiles(url.trim());
+      setScrapeResult(result);
+      
+      if (result.error) {
+        setError(result.error);
+      } else if (result.files.length === 0) {
+        setError('לא נמצאו קבצי אודיו בכתובת זו');
+      } else {
+        // Select all files by default
+        setSelectedFiles(new Set(result.files.map(f => f.url)));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'שגיאה בגירוד הדף');
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  const handleToggleFile = (fileUrl: string) => {
+    setSelectedFiles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(fileUrl)) {
+        newSet.delete(fileUrl);
+      } else {
+        newSet.add(fileUrl);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (scrapeResult) {
+      setSelectedFiles(new Set(scrapeResult.files.map(f => f.url)));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedFiles(new Set());
+  };
+
+  const handleDownloadSelected = () => {
+    if (selectedFiles.size > 0) {
+      onBatchDownload(Array.from(selectedFiles));
+      setScrapeResult(null);
+      setSelectedFiles(new Set());
+      setUrl('');
+    }
+  };
+
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleCheckForUpdates = async () => {
@@ -215,26 +289,86 @@ export function DownloadManager({
         )}
       </div>
 
-      {/* Manual URL Input */}
+      {/* Smart URL Scraping */}
       <div className="download-manager__manual">
-        <h3>הורדה ידנית</h3>
+        <h3>הורדה חכמה</h3>
+        <p className="download-manager__hint">
+          הדבק כתובת של דף עם קבצי אודיו או קישור ישיר להורדה
+        </p>
         <form className="download-manager__form" onSubmit={handleSubmit}>
           <Input
-            placeholder="הדבק קישור ישיר לקובץ אודיו (mp3, wav, flac...)"
+            placeholder="https://example.com/music או קישור ישיר לקובץ"
             contentBefore={<Link24Regular />}
             value={url}
             onChange={(_, data) => setUrl(data.value)}
             className="download-manager__input"
           />
           <Button
+            appearance="outline"
+            icon={isScraping ? <Spinner size="tiny" /> : <Search24Regular />}
+            onClick={handleScrapeUrl}
+            disabled={!url.trim() || isScraping}
+            title="סרוק את הדף ומצא קבצי אודיו"
+          >
+            סרוק
+          </Button>
+          <Button
             appearance="primary"
             icon={<ArrowDownload24Regular />}
             type="submit"
             disabled={!url.trim()}
+            title="הורד ישירות (לקישורים ישירים)"
           >
             הורד
           </Button>
         </form>
+
+        {/* Scrape Results */}
+        {scrapeResult && scrapeResult.files.length > 0 && (
+          <div className="scrape-results">
+            <div className="scrape-results__header">
+              <div className="scrape-results__info">
+                <DocumentBulletList24Regular />
+                <span>
+                  {scrapeResult.pageTitle && <strong>{scrapeResult.pageTitle}: </strong>}
+                  נמצאו {scrapeResult.files.length} קבצי אודיו
+                </span>
+              </div>
+              <div className="scrape-results__actions">
+                <Button appearance="subtle" size="small" onClick={handleSelectAll}>
+                  בחר הכל
+                </Button>
+                <Button appearance="subtle" size="small" onClick={handleDeselectAll}>
+                  נקה בחירה
+                </Button>
+                <Button
+                  appearance="primary"
+                  size="small"
+                  icon={<ArrowDownload24Regular />}
+                  onClick={handleDownloadSelected}
+                  disabled={selectedFiles.size === 0}
+                >
+                  הורד ({selectedFiles.size})
+                </Button>
+              </div>
+            </div>
+            <div className="scrape-results__list">
+              {scrapeResult.files.map((file) => (
+                <label key={file.url} className="scrape-results__item">
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file.url)}
+                    onChange={() => handleToggleFile(file.url)}
+                  />
+                  <span className="scrape-results__name">{file.name}</span>
+                  {file.size && (
+                    <span className="scrape-results__size">{formatFileSize(file.size)}</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Downloads List */}
