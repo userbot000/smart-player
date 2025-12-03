@@ -108,10 +108,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     } else {
       nextIndex = queueIndex + 1;
       if (nextIndex >= queue.length) {
-        if (repeat === 'all') {
-          nextIndex = 0;
-        } else {
-          set({ isPlaying: false });
+        // End of queue - go back to start
+        nextIndex = 0;
+        if (repeat !== 'all') {
+          // Stop playing but keep first song ready
+          set({ 
+            queueIndex: 0, 
+            currentSong: queue[0],
+            progress: 0,
+            isPlaying: false 
+          });
           return;
         }
       }
