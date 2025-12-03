@@ -10,7 +10,7 @@ import {
 import {
   Tag24Regular,
   MusicNote224Regular,
-  ArrowDownload24Regular,
+  Save24Regular,
 } from '@fluentui/react-icons';
 import { Song } from '../../types';
 import { useToast } from '../Toast/ToastProvider';
@@ -95,8 +95,8 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
         showSuccess(`הקובץ "${fileName}" נשמר עם התגיות החדשות!`);
       }
     } catch (error) {
-      console.error('Error exporting with tags:', error);
-      showError('שגיאה בייצוא הקובץ');
+      console.error('Error saving tags:', error);
+      showError('שגיאה בשמירת התגיות');
     } finally {
       setIsSaving(false);
     }
@@ -208,11 +208,11 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
           <div className="metadata-editor__actions">
             <Button
               appearance="primary"
-              icon={<ArrowDownload24Regular />}
+              icon={<Save24Regular />}
               onClick={handleExportWithTags}
-              disabled={!selectedSong?.audioData || isSaving}
+              disabled={!selectedSong?.audioData || isSaving || !hasChanges}
             >
-              {isSaving ? 'שומר...' : 'שמור תגיות לקובץ'}
+              {isSaving ? 'שומר...' : 'עדכן תגיות'}
             </Button>
             <Button appearance="subtle" onClick={handleReset} disabled={!hasChanges || isSaving}>
               בטל שינויים

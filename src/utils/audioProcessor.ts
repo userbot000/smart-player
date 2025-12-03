@@ -1,6 +1,8 @@
 // Audio Processing Utilities
 // Uses Web Audio API for processing, Tauri for file system access
 
+import { invoke } from '@tauri-apps/api/core';
+
 /**
  * Check if running in Tauri environment
  */
@@ -19,23 +21,19 @@ export async function cutAudioSegment(
 ): Promise<Blob> {
   const audioContext = new AudioContext();
   
-  // Decode the audio data
   const audioBuffer = await audioContext.decodeAudioData(audioData.slice(0));
   
-  // Calculate sample positions
   const sampleRate = audioBuffer.sampleRate;
   const startSample = Math.floor(startTime * sampleRate);
   const endSample = Math.floor(endTime * sampleRate);
   const segmentLength = endSample - startSample;
   
-  // Create a new buffer for the segment
   const segmentBuffer = audioContext.createBuffer(
     audioBuffer.numberOfChannels,
     segmentLength,
     sampleRate
   );
   
-  // Copy the segment data
   for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
     const sourceData = audioBuffer.getChannelData(channel);
     const targetData = segmentBuffer.getChannelData(channel);
@@ -44,7 +42,6 @@ export async function cutAudioSegment(
     }
   }
   
-  // Encode to WAV format
   const wavBlob = audioBufferToWav(segmentBuffer);
   
   await audioContext.close();
@@ -58,7 +55,7 @@ export async function cutAudioSegment(
 function audioBufferToWav(buffer: AudioBuffer): Blob {
   const numChannels = buffer.numberOfChannels;
   const sampleRate = buffer.sampleRate;
-  const format = 1; // PCM
+  const format = 1;
   const bitDepth = 16;
   
   const bytesPerSample = bitDepth / 8;
@@ -70,12 +67,11 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   const arrayBuffer = new ArrayBuffer(bufferLength);
   const view = new DataView(arrayBuffer);
   
-  // WAV header
   writeString(view, 0, 'RIFF');
   view.setUint32(4, 36 + dataLength, true);
   writeString(view, 8, 'WAVE');
   writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint32(16, 16, true);
   view.setUint16(20, format, true);
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
@@ -85,7 +81,6 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   writeString(view, 36, 'data');
   view.setUint32(40, dataLength, true);
   
-  // Write audio data
   const offset = 44;
   const channels: Float32Array[] = [];
   for (let i = 0; i < numChannels; i++) {
@@ -109,43 +104,32 @@ function writeString(view: DataView, offset: number, string: string): void {
   }
 }
 
+
 /**
- * Save file to user's computer
- * In browser: triggers download
- * In Tauri (EXE): saves to specified path or shows save dialog
+ * Save file using Tauri's Rust backend
  */
-export async function saveFile(blob: Blob, fileName: string, originalPath?: string): Promise<void> {
-  if (isTauri() && originalPath) {
-    // In Tauri: save to original file path
-    try {
-      const { writeFile } = await (window as any).__TAURI__.fs;
-      const arrayBuffer = await blob.arrayBuffer();
-      await writeFile(originalPath, new Uint8Array(arrayBuffer));
-      return;
-    } catch (error) {
-      console.error('Tauri save error, falling back to download:', error);
-    }
+export async function saveFileToPath(data: Uint8Array, filePath: string): Promise<void> {
+  if (!isTauri()) {
+    throw new Error('שמירה לנתיב זמינה רק באפליקציה');
   }
   
-  if (isTauri()) {
-    // In Tauri: show save dialog
-    try {
-      const { save } = await (window as any).__TAURI__.dialog;
-      const { writeFile } = await (window as any).__TAURI__.fs;
-      
-      const filePath = await save({
-        defaultPath: fileName,
-        filters: [{ name: 'Audio', extensions: ['mp3', 'wav'] }]
-      });
-      
-      if (filePath) {
-        const arrayBuffer = await blob.arrayBuffer();
-        await writeFile(filePath, new Uint8Array(arrayBuffer));
-        return;
-      }
-    } catch (error) {
-      console.error('Tauri dialog error, falling back to download:', error);
-    }
+  await invoke('write_file', {
+    path: filePath,
+    data: Array.from(data)
+  });
+}
+
+/**
+ * Save file - either to original path or trigger download
+ */
+export async function saveFile(blob: Blob, fileName: string, originalPath?: string): Promise<void> {
+  const arrayBuffer = await blob.arrayBuffer();
+  const data = new Uint8Array(arrayBuffer);
+  
+  if (isTauri() && originalPath) {
+    // Save to original file path
+    await saveFileToPath(data, originalPath);
+    return;
   }
   
   // Browser fallback: trigger download
@@ -186,7 +170,6 @@ export async function writeId3Tags(
     comment?: string;
   }
 ): Promise<Blob> {
-  // Import browser-id3-writer
   const module = await import('browser-id3-writer');
   const ID3Writer = module.default || module;
   
@@ -206,8 +189,7 @@ export async function writeId3Tags(
 }
 
 /**
- * Update MP3 file with new ID3 tags and save
- * @param originalPath - If provided and running in Tauri, saves to this path (overwrites original)
+ * Update MP3 file with new ID3 tags and save to original path
  */
 export async function updateAndSaveWithTags(
   audioData: ArrayBuffer,

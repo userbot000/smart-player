@@ -15,6 +15,11 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
+async fn write_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    fs::write(&path, &data).map_err(|e| format!("שגיאה בכתיבת קובץ: {}", e))
+}
+
+#[tauri::command]
 async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
     let path = Path::new(&folder_path);
     
@@ -57,7 +62,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![greet, scan_folder])
+        .invoke_handler(tauri::generate_handler![greet, scan_folder, write_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
