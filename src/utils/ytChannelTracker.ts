@@ -7,18 +7,16 @@ import {
     requestPermission,
     sendNotification,
 } from '@tauri-apps/plugin-notification';
+import {
+    getTrackedChannels as dbGetChannels,
+    saveTrackedChannels as dbSaveChannels,
+    removeTrackedChannel as dbRemoveChannel,
+    type TrackedChannel,
+} from '../db/database';
 
-const STORAGE_KEY = 'yt_tracked_channels';
 const CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
-export interface TrackedChannel {
-    id: string;
-    name: string;
-    url: string;
-    lastVideoId: string | null;
-    lastCheck: number;
-    addedAt: number;
-}
+export type { TrackedChannel };
 
 export interface ChannelVideo {
     id: string;
@@ -27,22 +25,33 @@ export interface ChannelVideo {
     publishedAt?: string;
 }
 
-// Get tracked channels from localStorage
+// Cache for sync access
+let channelsCache: TrackedChannel[] = [];
+
+// Initialize cache
+dbGetChannels().then(c => { channelsCache = c; });
+
+// Get tracked channels (sync, from cache)
 export function getTrackedChannels(): TrackedChannel[] {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            return JSON.parse(stored);
-        }
-    } catch {
-        // Ignore parse errors
-    }
-    return [];
+    return channelsCache;
+}
+
+// Get tracked channels (async, from DB)
+export async function getTrackedChannelsAsync(): Promise<TrackedChannel[]> {
+    channelsCache = await dbGetChannels();
+    return channelsCache;
 }
 
 // Save tracked channels
-export function saveTrackedChannels(channels: TrackedChannel[]): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(channels));
+export async function saveTrackedChannels(channels: TrackedChannel[]): Promise<void> {
+    await dbSaveChannels(channels);
+    channelsCache = channels;
+}
+
+// Remove tracked channel
+export async function removeTrackedChannel(channelId: string): Promise<void> {
+    await dbRemoveChannel(channelId);
+    channelsCache = channelsCache.filter(c => c.id !== channelId);
 }
 
 // Extract channel ID/handle from URL
@@ -169,13 +178,6 @@ export async function addTrackedChannel(
     saveTrackedChannels(channels);
 
     return { success: true, channel };
-}
-
-// Remove channel from tracking
-export function removeTrackedChannel(channelId: string): void {
-    const channels = getTrackedChannels();
-    const filtered = channels.filter((c) => c.id !== channelId);
-    saveTrackedChannels(filtered);
 }
 
 // Check for new videos on a channel

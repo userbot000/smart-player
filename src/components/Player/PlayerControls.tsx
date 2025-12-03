@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Play24Filled, Pause24Filled, Previous24Filled, Next24Filled,
   Speaker224Filled, SpeakerMute24Filled,
@@ -5,12 +6,16 @@ import {
   ArrowShuffle24Regular, ArrowShuffle24Filled,
   Sparkle24Regular, Sparkle24Filled,
   MusicNote224Regular,
-  Warning24Regular
+  Warning24Regular,
+  Bookmark24Regular,
+  Bookmark24Filled,
+  Delete24Regular,
 } from '@fluentui/react-icons';
 import { Slider, Tooltip, Button, MessageBar, MessageBarBody } from '@fluentui/react-components';
 import { usePlayerStore } from '../../store/playerStore';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { formatTime } from '../../utils/formatTime';
+import { getBookmarks, addBookmark, removeBookmark, Bookmark } from '../../db/bookmarks';
 import './PlayerControls.css';
 
 export function PlayerControls() {
@@ -22,6 +27,35 @@ export function PlayerControls() {
   } = usePlayerStore();
 
   const { seek, isReady } = useAudioPlayer();
+  
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+
+  useEffect(() => {
+    if (currentSong) {
+      getBookmarks(currentSong.id).then(setBookmarks);
+    }
+  }, [currentSong]);
+
+  const handleAddBookmark = async () => {
+    if (currentSong) {
+      await addBookmark(currentSong.id, progress);
+      const updated = await getBookmarks(currentSong.id);
+      setBookmarks(updated);
+    }
+  };
+
+  const handleRemoveBookmark = async (id: string) => {
+    await removeBookmark(id);
+    if (currentSong) {
+      const updated = await getBookmarks(currentSong.id);
+      setBookmarks(updated);
+    }
+  };
+
+  const handleJumpToBookmark = (timestamp: number) => {
+    if (isReady) seek(timestamp);
+  };
 
   const handleProgressChange = (_: unknown, data: { value: number }) => {
     if (isReady) seek(data.value);
@@ -106,7 +140,41 @@ export function PlayerControls() {
               className={repeat !== 'none' ? 'active' : ''}
             />
           </Tooltip>
+
+          <Tooltip content="הוסף סימנייה" relationship="label">
+            <Button
+              appearance="subtle"
+              icon={bookmarks.length > 0 ? <Bookmark24Filled /> : <Bookmark24Regular />}
+              onClick={() => setShowBookmarks(!showBookmarks)}
+              onDoubleClick={handleAddBookmark}
+              className={bookmarks.length > 0 ? 'active' : ''}
+            />
+          </Tooltip>
         </div>
+
+        {showBookmarks && bookmarks.length > 0 && (
+          <div className="player__bookmarks">
+            {bookmarks.map(b => (
+              <div key={b.id} className="player__bookmark">
+                <button 
+                  className="player__bookmark-time"
+                  onClick={() => handleJumpToBookmark(b.timestamp)}
+                >
+                  {b.label}
+                </button>
+                <button 
+                  className="player__bookmark-delete"
+                  onClick={() => handleRemoveBookmark(b.id)}
+                >
+                  <Delete24Regular />
+                </button>
+              </div>
+            ))}
+            <button className="player__bookmark-add" onClick={handleAddBookmark}>
+              + הוסף סימנייה
+            </button>
+          </div>
+        )}
 
         <div className="player__progress">
           <span className="player__time">{formatTime(progress)}</span>

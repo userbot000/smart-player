@@ -10,7 +10,7 @@ import { Sidebar, PlayerControls } from './components';
 import { ToastProvider } from './components/Toast/ToastProvider';
 import { HomeView, LibraryView, AlbumsView, ArtistsView, DownloadsView, SettingsView, ToolsView } from './views';
 import { Song, DownloadTask } from './types';
-import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong } from './db/database';
+import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences } from './db/database';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
 
@@ -24,7 +24,7 @@ function App() {
   const [recentSongs, setRecentSongs] = useState<Song[]>([]);
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [isDark, setIsDark] = useState(false);
-  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || 'blue');
+  const [accentColor, setAccentColor] = useState('blue');
 
   // Brand color palettes for each accent color
   const brandColors: Record<string, BrandVariants> = useMemo(
@@ -180,10 +180,17 @@ function App() {
     document.documentElement.style.setProperty('--color-primary', color);
     document.documentElement.style.setProperty('--color-primary-hover', color);
     document.documentElement.style.setProperty('--surface-selected', `${color}26`);
-    localStorage.setItem('accentColor', accentColor);
-  }, [accentColor]);
+    // Save to IndexedDB
+    savePreferences({ accentColor, isDark });
+  }, [accentColor, isDark]);
 
   useEffect(() => {
+    // Load preferences from IndexedDB
+    getPreferences().then(prefs => {
+      setAccentColor(prefs.accentColor);
+      setIsDark(prefs.isDark);
+    });
+    
     loadSongs();
     
     // Start YouTube channel tracking

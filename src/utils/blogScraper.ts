@@ -2,9 +2,13 @@
 // Uses Tauri Shell to run PowerShell for scraping (bypasses CORS)
 
 import { Command } from '@tauri-apps/plugin-shell';
+import {
+  getBlogSyncState as dbGetState,
+  saveBlogSyncState as dbSaveState,
+  type BlogSyncState,
+} from '../db/database';
 
 const BLOG_BASE_URL = 'https://newsmusic.blogspot.com';
-const STORAGE_KEY = 'blog_last_sync';
 
 // Check if running inside Tauri
 function isTauri(): boolean {
@@ -20,42 +24,46 @@ export interface BlogPost {
   imageUrl?: string;
 }
 
-export interface BlogSyncState {
-  lastPostId: string | null;
-  lastSyncTimestamp: number;
-  downloadedPostIds: string[];
+export type { BlogSyncState };
+
+// Cache for sync access
+let syncStateCache: BlogSyncState = {
+  id: 'blog_sync',
+  lastPostId: null,
+  lastSyncTimestamp: 0,
+  downloadedPostIds: [],
+};
+
+// Initialize cache
+dbGetState().then(s => { syncStateCache = s; });
+
+// Get sync state (sync, from cache)
+export function getBlogSyncState(): BlogSyncState {
+  return syncStateCache;
 }
 
-// Get sync state from localStorage
-export function getBlogSyncState(): BlogSyncState {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return {
-    lastPostId: null,
-    lastSyncTimestamp: 0,
-    downloadedPostIds: [],
-  };
+// Get sync state (async, from DB)
+export async function getBlogSyncStateAsync(): Promise<BlogSyncState> {
+  syncStateCache = await dbGetState();
+  return syncStateCache;
 }
 
 // Save sync state
-export function saveBlogSyncState(state: BlogSyncState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+export async function saveBlogSyncState(state: Omit<BlogSyncState, 'id'>): Promise<void> {
+  await dbSaveState(state);
+  syncStateCache = { id: 'blog_sync', ...state };
 }
 
 // Mark post as downloaded
-export function markPostAsDownloaded(postId: string): void {
+export async function markPostAsDownloaded(postId: string): Promise<void> {
   const state = getBlogSyncState();
   if (!state.downloadedPostIds.includes(postId)) {
-    state.downloadedPostIds.push(postId);
-    state.lastPostId = postId;
-    state.lastSyncTimestamp = Date.now();
-    saveBlogSyncState(state);
+    const newState = {
+      lastPostId: postId,
+      lastSyncTimestamp: Date.now(),
+      downloadedPostIds: [...state.downloadedPostIds, postId],
+    };
+    await saveBlogSyncState(newState);
   }
 }
 

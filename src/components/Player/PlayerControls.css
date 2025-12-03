@@ -218,3 +218,78 @@
     max-width: none;
   }
 }
+
+
+/* Bookmarks */
+.player__bookmarks {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-elevated);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  max-width: 400px;
+  z-index: 100;
+}
+
+.player__bookmark {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-hover);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.player__bookmark-time {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.player__bookmark-time:hover {
+  background: var(--surface-selected);
+}
+
+.player__bookmark-delete {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.player__bookmark-delete:hover {
+  color: var(--color-error);
+}
+
+.player__bookmark-delete svg {
+  width: 16px;
+  height: 16px;
+}
+
+.player__bookmark-add {
+  background: none;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.player__bookmark-add:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}

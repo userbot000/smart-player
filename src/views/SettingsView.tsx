@@ -3,9 +3,10 @@ import { Switch, Label, Button, Text, Input, Spinner } from '@fluentui/react-com
 import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular } from '@fluentui/react-icons';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';
-import { getArtistFilters, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
+import { getArtistFiltersAsync, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
 import {
   getTrackedChannels,
+  getTrackedChannelsAsync,
   addTrackedChannel,
   removeTrackedChannel,
   TrackedChannel,
@@ -31,7 +32,7 @@ const ACCENT_COLORS = [
 
 export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentColor = 'blue', onAccentColorChange }: SettingsViewProps) {
   const [folders, setFolders] = useState<WatchedFolder[]>([]);
-  const [filters, setFilters] = useState<ArtistFilters>({ whitelist: [], blacklist: [] });
+  const [filters, setFilters] = useState<ArtistFilters>({ id: 'filters', whitelist: [], blacklist: [] });
   const [newWhitelistArtist, setNewWhitelistArtist] = useState('');
   const [newBlacklistArtist, setNewBlacklistArtist] = useState('');
   
@@ -43,8 +44,8 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
 
   useEffect(() => {
     loadFolders();
-    setFilters(getArtistFilters());
-    setTrackedChannels(getTrackedChannels());
+    getArtistFiltersAsync().then(setFilters);
+    getTrackedChannelsAsync().then(setTrackedChannels);
   }, []);
 
   const loadFolders = async () => {

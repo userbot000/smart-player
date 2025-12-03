@@ -1,60 +1,32 @@
 // Artist whitelist/blacklist filters for download updates
+// Uses IndexedDB via database.ts
 
-const STORAGE_KEY = 'artist_filters';
+import {
+  getArtistFilters as dbGetFilters,
+  saveArtistFilters as dbSaveFilters,
+  type ArtistFilters,
+} from '../db/database';
 
-export interface ArtistFilters {
-  whitelist: string[]; // Only download these artists (if not empty)
-  blacklist: string[]; // Never download these artists
-}
+export type { ArtistFilters };
+
+// Cache for sync access (updated on every save)
+let filtersCache: ArtistFilters = { id: 'filters', whitelist: [], blacklist: [] };
+
+// Initialize cache
+dbGetFilters().then(f => { filtersCache = f; });
 
 export function getArtistFilters(): ArtistFilters {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return { whitelist: [], blacklist: [] };
+  return filtersCache;
 }
 
-export function saveArtistFilters(filters: ArtistFilters): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+export async function getArtistFiltersAsync(): Promise<ArtistFilters> {
+  filtersCache = await dbGetFilters();
+  return filtersCache;
 }
 
-export function addToWhitelist(artist: string): void {
-  const filters = getArtistFilters();
-  const normalized = artist.trim();
-  if (normalized && !filters.whitelist.includes(normalized)) {
-    filters.whitelist.push(normalized);
-    // Remove from blacklist if exists
-    filters.blacklist = filters.blacklist.filter(a => a !== normalized);
-    saveArtistFilters(filters);
-  }
-}
-
-export function addToBlacklist(artist: string): void {
-  const filters = getArtistFilters();
-  const normalized = artist.trim();
-  if (normalized && !filters.blacklist.includes(normalized)) {
-    filters.blacklist.push(normalized);
-    // Remove from whitelist if exists
-    filters.whitelist = filters.whitelist.filter(a => a !== normalized);
-    saveArtistFilters(filters);
-  }
-}
-
-export function removeFromWhitelist(artist: string): void {
-  const filters = getArtistFilters();
-  filters.whitelist = filters.whitelist.filter(a => a !== artist);
-  saveArtistFilters(filters);
-}
-
-export function removeFromBlacklist(artist: string): void {
-  const filters = getArtistFilters();
-  filters.blacklist = filters.blacklist.filter(a => a !== artist);
-  saveArtistFilters(filters);
+export async function saveArtistFilters(filters: { whitelist: string[]; blacklist: string[] }): Promise<void> {
+  await dbSaveFilters(filters);
+  filtersCache = { id: 'filters', ...filters };
 }
 
 // Check if a song title/artist should be downloaded based on filters
