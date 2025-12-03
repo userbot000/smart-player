@@ -42,6 +42,15 @@ export interface AppPreferences {
   isDark: boolean;
 }
 
+// Player state for resume playback
+export interface PlayerResumeState {
+  id: string; // always 'player_state'
+  songId: string | null;
+  progress: number;
+  volume: number;
+  timestamp: number;
+}
+
 export class SmartPlayerDB extends Dexie {
   songs!: Table<Song>;
   playlists!: Table<Playlist>;
@@ -52,11 +61,12 @@ export class SmartPlayerDB extends Dexie {
   artistFilters!: Table<ArtistFilters>;
   blogSync!: Table<BlogSyncState>;
   preferences!: Table<AppPreferences>;
+  playerState!: Table<PlayerResumeState>;
 
   constructor() {
     super('SmartPlayerDB');
 
-    this.version(2).stores({
+    this.version(3).stores({
       songs: 'id, title, artist, album, genre, addedAt, playCount, lastPlayed',
       playlists: 'id, name, createdAt, updatedAt',
       downloads: 'id, status, url',
@@ -66,6 +76,7 @@ export class SmartPlayerDB extends Dexie {
       artistFilters: 'id',
       blogSync: 'id',
       preferences: 'id',
+      playerState: 'id',
     });
   }
 }
@@ -262,4 +273,14 @@ export async function getPreferences(): Promise<AppPreferences> {
 
 export async function savePreferences(prefs: Omit<AppPreferences, 'id'>): Promise<void> {
   await db.preferences.put({ id: 'prefs', ...prefs });
+}
+
+// ============ Player Resume State ============
+export async function getPlayerState(): Promise<PlayerResumeState> {
+  const state = await db.playerState.get('player_state');
+  return state || { id: 'player_state', songId: null, progress: 0, volume: 0.7, timestamp: 0 };
+}
+
+export async function savePlayerState(state: Omit<PlayerResumeState, 'id'>): Promise<void> {
+  await db.playerState.put({ id: 'player_state', ...state });
 }

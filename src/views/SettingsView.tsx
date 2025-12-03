@@ -35,7 +35,7 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
   const [filters, setFilters] = useState<ArtistFilters>({ id: 'filters', whitelist: [], blacklist: [] });
   const [newWhitelistArtist, setNewWhitelistArtist] = useState('');
   const [newBlacklistArtist, setNewBlacklistArtist] = useState('');
-  
+
   // YouTube channel tracking
   const [trackedChannels, setTrackedChannels] = useState<TrackedChannel[]>([]);
   const [newChannelUrl, setNewChannelUrl] = useState('');
@@ -99,10 +99,10 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
 
   const handleAddChannel = async () => {
     if (!newChannelUrl.trim()) return;
-    
+
     setAddingChannel(true);
     setChannelError(null);
-    
+
     try {
       const result = await addTrackedChannel(newChannelUrl.trim());
       if (result.success) {
@@ -219,7 +219,7 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
         <p className="settings-section__desc">
           קבל התראה כשיש סרטון חדש בערוץ והורד אוטומטית
         </p>
-        
+
         <div className="filter-list__input">
           <Input
             placeholder="https://youtube.com/@channel או קישור לערוץ"
@@ -228,19 +228,19 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
             onKeyDown={(e) => e.key === 'Enter' && handleAddChannel()}
             disabled={addingChannel}
           />
-          <Button 
-            icon={addingChannel ? <Spinner size="tiny" /> : <Add24Regular />} 
+          <Button
+            icon={addingChannel ? <Spinner size="tiny" /> : <Add24Regular />}
             onClick={handleAddChannel}
             disabled={addingChannel || !newChannelUrl.trim()}
           >
             {addingChannel ? 'מוסיף...' : 'הוסף'}
           </Button>
         </div>
-        
+
         {channelError && (
           <p className="settings-error">{channelError}</p>
         )}
-        
+
         <div className="settings-channels">
           {trackedChannels.length === 0 ? (
             <div className="settings-empty">

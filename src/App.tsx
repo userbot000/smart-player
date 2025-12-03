@@ -10,7 +10,8 @@ import { Sidebar, PlayerControls } from './components';
 import { ToastProvider } from './components/Toast/ToastProvider';
 import { HomeView, LibraryView, AlbumsView, ArtistsView, DownloadsView, SettingsView, ToolsView } from './views';
 import { Song, DownloadTask } from './types';
-import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences } from './db/database';
+import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences, getPlayerState, savePlayerState } from './db/database';
+import { usePlayerStore } from './store/playerStore';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
 
@@ -25,6 +26,8 @@ function App() {
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [isDark, setIsDark] = useState(false);
   const [accentColor, setAccentColor] = useState('blue');
+  
+  const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue } = usePlayerStore();
 
   // Brand color palettes for each accent color
   const brandColors: Record<string, BrandVariants> = useMemo(
@@ -203,6 +206,52 @@ function App() {
       stopChannelTracking();
     };
   }, []);
+
+  // Load saved player state on startup
+  useEffect(() => {
+    const loadPlayerState = async () => {
+      const allSongs = await getAllSongs();
+      if (allSongs.length === 0) return;
+      
+      const state = await getPlayerState();
+      if (state.songId) {
+        const song = allSongs.find(s => s.id === state.songId);
+        if (song) {
+          setQueue(allSongs);
+          setSong(song);
+          setProgress(state.progress);
+          setVolume(state.volume);
+        }
+      }
+    };
+    loadPlayerState();
+  }, [setSong, setProgress, setVolume, setQueue]);
+
+  // Save player state periodically and on close
+  useEffect(() => {
+    const saveState = () => {
+      if (currentSong) {
+        savePlayerState({
+          songId: currentSong.id,
+          progress,
+          volume,
+          timestamp: Date.now(),
+        });
+      }
+    };
+
+    // Save every 5 seconds while playing
+    const interval = setInterval(saveState, 5000);
+    
+    // Save on page unload
+    window.addEventListener('beforeunload', saveState);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', saveState);
+      saveState(); // Save when component unmounts
+    };
+  }, [currentSong, progress, volume]);
 
   const loadSongs = async () => {
     const allSongs = await getAllSongs();
