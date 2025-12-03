@@ -1,10 +1,15 @@
 // Blogspot Scraper for newsmusic.blogspot.com
-// Uses Tauri HTTP plugin to bypass CORS/NetFree restrictions
+// Uses Tauri Shell to run PowerShell for scraping (bypasses CORS)
 
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { Command } from '@tauri-apps/plugin-shell';
 
 const BLOG_BASE_URL = 'https://newsmusic.blogspot.com';
 const STORAGE_KEY = 'blog_last_sync';
+
+// Check if running inside Tauri
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
 
 export interface BlogPost {
   id: string;
@@ -54,22 +59,27 @@ export function markPostAsDownloaded(postId: string): void {
   }
 }
 
-// Fetch page HTML using Tauri HTTP (bypasses CORS)
+// Fetch page HTML using PowerShell (bypasses CORS completely)
 async function fetchPageHtml(url: string): Promise<string> {
-  try {
-    const response = await tauriFetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
+  if (!isTauri()) {
+    throw new Error('יש להריץ את האפליקציה דרך Tauri');
+  }
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  try {
+    // Use PowerShell to fetch the page
+    const command = Command.create('powershell', [
+      '-NoProfile',
+      '-Command',
+      `(Invoke-WebRequest -Uri "${url}" -UseBasicParsing).Content`
+    ]);
+
+    const output = await command.execute();
+
+    if (output.code !== 0) {
+      throw new Error(output.stderr || 'PowerShell command failed');
     }
 
-    return await response.text();
+    return output.stdout;
   } catch (error) {
     console.error('Fetch error:', error);
     throw new Error('לא ניתן להתחבר לאתר. נסה שוב מאוחר יותר.');

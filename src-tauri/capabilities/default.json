@@ -22,6 +22,16 @@
         { "url": "https://newsmusic.blogspot.com/*" },
         { "url": "https://*.archive.org/*" }
       ]
-    }
+    },
+    "{
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "powershell",
+          "cmd": "powershell",
+          "args": true
+        }
+      ]
+    }"
   ]
 }
