@@ -171,10 +171,12 @@ export async function writeId3Tags(
   }
 ): Promise<Blob> {
   const module = await import('browser-id3-writer');
-  const ID3Writer = module.default || module;
+  // Handle different export formats
+  const ID3Writer = module.default || module.ID3Writer || module;
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const writer = new (ID3Writer as any)(audioData);
+  const WriterClass = typeof ID3Writer === 'function' ? ID3Writer : (ID3Writer as any).default;
+  const writer = new WriterClass(audioData);
   
   if (tags.title) writer.setFrame('TIT2', tags.title);
   if (tags.artist) writer.setFrame('TPE1', [tags.artist]);
