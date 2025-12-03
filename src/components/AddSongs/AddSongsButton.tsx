@@ -20,6 +20,7 @@ interface AddSongsButtonProps {
   mode?: 'add' | 'rescan';
   folderId?: string;
   folderName?: string;
+  folderPath?: string;
 }
 
 const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.wma', '.opus'];
@@ -29,7 +30,6 @@ function isAudioFile(fileName: string): boolean {
   return AUDIO_EXTENSIONS.includes(ext);
 }
 
-// Read file as ArrayBuffer for storage
 async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -39,7 +39,8 @@ async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
   });
 }
 
-export function AddSongsButton({ onSongsAdded, mode = 'add', folderId }: AddSongsButtonProps) {
+
+export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderName }: AddSongsButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, skipped: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +48,85 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId }: AddSong
 
   const handleClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const processFiles = async (audioFiles: File[], targetFolderId?: string, targetFolderName?: string) => {
+    if (audioFiles.length === 0) {
+      showWarning('לא נמצאו קבצי אודיו בתיקייה');
+      return;
+    }
+
+    let currentFolderId = targetFolderId;
+    let existingFileNames = new Set<string>();
+    const detectedFolderName = targetFolderName || audioFiles[0].webkitRelativePath.split('/')[0] || 'תיקייה חדשה';
+
+    const existingFolder = await getWatchedFolderByName(detectedFolderName);
+
+    if (existingFolder) {
+      currentFolderId = existingFolder.id;
+      existingFileNames = await getSongFileNamesInFolder(existingFolder.id);
+    } else {
+      currentFolderId = crypto.randomUUID();
+      const watchedFolder: WatchedFolder = {
+        id: currentFolderId,
+        path: detectedFolderName,
+        name: detectedFolderName,
+        addedAt: Date.now(),
+        lastScanned: Date.now(),
+        songCount: 0,
+      };
+      await addWatchedFolder(watchedFolder);
+    }
+
+    const newFiles = audioFiles.filter((file) => !existingFileNames.has(file.name));
+    const skippedCount = audioFiles.length - newFiles.length;
+
+    if (newFiles.length === 0) {
+      showSuccess(`כל ${audioFiles.length} השירים כבר קיימים בספרייה`, 'הכל מעודכן');
+      return;
+    }
+
+    setProgress({ current: 0, total: newFiles.length, skipped: skippedCount });
+
+    let addedCount = 0;
+    for (const file of newFiles) {
+      try {
+        const metadata = await extractMetadata(file);
+        const audioData = await fileToArrayBuffer(file);
+
+        const song: Song = {
+          id: crypto.randomUUID(),
+          title: metadata.title,
+          artist: metadata.artist,
+          album: metadata.album,
+          duration: metadata.duration,
+          genre: metadata.genre,
+          coverUrl: metadata.coverUrl,
+          filePath: '',
+          audioData,
+          addedAt: Date.now(),
+          playCount: 0,
+          folderId: currentFolderId,
+          fileName: file.name,
+        };
+
+        await addSong(song);
+        addedCount++;
+        setProgress({ current: addedCount, total: newFiles.length, skipped: skippedCount });
+      } catch (err) {
+        console.error(`Error processing ${file.name}:`, err);
+      }
+    }
+
+    const totalSongs = await countSongsInFolder(currentFolderId!);
+    await updateFolderSongCount(currentFolderId!, totalSongs);
+    await updateFolderScanTime(currentFolderId!);
+
+    if (skippedCount > 0) {
+      showSuccess(`נוספו ${addedCount} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
+    } else {
+      showSuccess(`נוספו ${addedCount} שירים`, 'הושלם');
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,105 +137,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId }: AddSong
 
     try {
       const audioFiles = Array.from(files).filter((file) => isAudioFile(file.name));
-
-      if (audioFiles.length === 0) {
-        showWarning('לא נמצאו קבצי אודיו בתיקייה');
-        setIsLoading(false);
-        return;
-      }
-
-      // Get folder name from first file's path
-      const firstFile = audioFiles[0];
-      const pathParts = firstFile.webkitRelativePath.split('/');
-      const detectedFolderName = pathParts[0] || 'תיקייה חדשה';
-
-      // Check if folder already exists
-      let currentFolderId = folderId;
-      let existingFileNames = new Set<string>();
-
-      const existingFolder = await getWatchedFolderByName(detectedFolderName);
-
-      if (existingFolder) {
-        // Folder exists - get existing song filenames to skip duplicates
-        currentFolderId = existingFolder.id;
-        existingFileNames = await getSongFileNamesInFolder(existingFolder.id);
-        console.log(`Folder "${detectedFolderName}" exists with ${existingFileNames.size} songs`);
-      } else {
-        // Create new watched folder entry
-        currentFolderId = crypto.randomUUID();
-        const watchedFolder: WatchedFolder = {
-          id: currentFolderId,
-          path: detectedFolderName,
-          name: detectedFolderName,
-          addedAt: Date.now(),
-          lastScanned: Date.now(),
-          songCount: 0,
-        };
-        await addWatchedFolder(watchedFolder);
-        console.log(`Created new folder "${detectedFolderName}"`);
-      }
-
-      // Filter out files that already exist
-      const newFiles = audioFiles.filter((file) => !existingFileNames.has(file.name));
-      const skippedCount = audioFiles.length - newFiles.length;
-
-      if (newFiles.length === 0) {
-        showSuccess(`כל ${audioFiles.length} השירים כבר קיימים בספרייה`, 'הכל מעודכן');
-        setIsLoading(false);
-        return;
-      }
-
-      if (skippedCount > 0) {
-        console.log(`Skipping ${skippedCount} existing files, adding ${newFiles.length} new files`);
-      }
-
-      setProgress({ current: 0, total: newFiles.length, skipped: skippedCount });
-
-      let addedCount = 0;
-      for (const file of newFiles) {
-        try {
-          // Extract metadata including cover art
-          const metadata = await extractMetadata(file);
-
-          // Store the actual audio data
-          const audioData = await fileToArrayBuffer(file);
-
-          const song: Song = {
-            id: crypto.randomUUID(),
-            title: metadata.title,
-            artist: metadata.artist,
-            album: metadata.album,
-            duration: metadata.duration,
-            genre: metadata.genre,
-            coverUrl: metadata.coverUrl,
-            filePath: '', // Will be created from audioData when needed
-            audioData,
-            addedAt: Date.now(),
-            playCount: 0,
-            folderId: currentFolderId,
-            fileName: file.name,
-          };
-
-          await addSong(song);
-          addedCount++;
-          setProgress({ current: addedCount, total: newFiles.length, skipped: skippedCount });
-        } catch (err) {
-          console.error(`Error Musicprocessing ${file.name}:`, err);
-        }
-      }
-
-      // Update folder stats
-      const totalSongs = await countSongsInFolder(currentFolderId!);
-      await updateFolderSongCount(currentFolderId!, totalSongs);
-      await updateFolderScanTime(currentFolderId!);
-
-      // Show summary toast
-      if (skippedCount > 0) {
-        showSuccess(`נוספו ${addedCount} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
-      } else {
-        showSuccess(`נוספו ${addedCount} שירים`, 'הושלם');
-      }
-
+      await processFiles(audioFiles, folderId, folderName);
       onSongsAdded();
     } catch (error) {
       console.error('Error adding songs:', error);

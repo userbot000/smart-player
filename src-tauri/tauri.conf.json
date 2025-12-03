@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "smart-player",
-        "width": 800,
-        "height": 600
+        "title": "Smart Player",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600
       }
     ],
     "security": {
