@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import {
   Play24Filled, Pause24Filled, Previous24Filled, Next24Filled,
   Speaker224Filled, SpeakerMute24Filled,
@@ -22,9 +23,27 @@ export function PlayerControls() {
   } = usePlayerStore();
 
   const { seek, isReady } = useAudioPlayer();
+  
+  // Track if user is dragging the progress slider
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragValue, setDragValue] = useState(0);
+  const seekTimeoutRef = useRef<number | null>(null);
 
   const handleProgressChange = (_: unknown, data: { value: number }) => {
-    if (isReady) seek(data.value);
+    setDragValue(data.value);
+    setIsDragging(true);
+    
+    // Debounce the actual seek to prevent multiple calls
+    if (seekTimeoutRef.current) {
+      clearTimeout(seekTimeoutRef.current);
+    }
+    
+    seekTimeoutRef.current = window.setTimeout(() => {
+      if (isReady) {
+        seek(data.value);
+      }
+      setIsDragging(false);
+    }, 100);
   };
   const handleVolumeChange = (_: unknown, data: { value: number }) => setVolume(data.value);
 
@@ -109,11 +128,11 @@ export function PlayerControls() {
         </div>
 
         <div className="player__progress">
-          <span className="player__time">{formatTime(progress)}</span>
+          <span className="player__time">{formatTime(isDragging ? dragValue : progress)}</span>
           <Slider
             min={0}
             max={duration || 100}
-            value={progress}
+            value={isDragging ? dragValue : progress}
             onChange={handleProgressChange}
             className="player__slider"
           />
