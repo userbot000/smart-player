@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { Button, Spinner } from '@fluentui/react-components';
 import { FolderAdd24Regular, ArrowSync24Regular } from '@fluentui/react-icons';
-import { invoke } from '@tauri-apps/api/core';
 import { Song } from '../../types';
 import { addSong } from '../../db/database';
 import {
@@ -53,6 +52,9 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showWarning, showError } = useToast();
 
+  // Check if running in Tauri
+  const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
   // Rescan using Tauri - no dialog needed
   const handleRescan = async () => {
     if (!folderPath || !folderId) {
@@ -60,8 +62,15 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
       return;
     }
 
+    // If not in Tauri, fall back to file picker
+    if (!isTauri) {
+      fileInputRef.current?.click();
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const { invoke } = await import('@tauri-apps/api/core');
       const files: AudioFileFromRust[] = await invoke('scan_folder', { folderPath });
 
       if (files.length === 0) {
