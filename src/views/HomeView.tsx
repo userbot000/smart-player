@@ -31,7 +31,7 @@ export function HomeView({ recentSongs, totalSongs, onSongsAdded }: HomeViewProp
           {recentSongs.length > 0 && (
             <SongList
               songs={recentSongs}
-              title="נוגנו לאחרונה"
+              title="הושמעו לאחרונה"
               showSearch={false}
             />
           )}

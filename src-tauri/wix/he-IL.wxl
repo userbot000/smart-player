@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="he-IL" xmlns="http://wixtoolset.org/schemas/v4/wxl" Language="1037" Codepage="1255">
+  <!-- General -->
+  <String Id="WelcomeDlgTitle">ברוכים הבאים לאשף ההתקנה של [ProductName]</String>
+  <String Id="WelcomeDlgDescription">אשף זה יתקין את [ProductName] גרסה [ProductVersion] במחשב שלך. לחץ על "הבא" כדי להמשיך או על "ביטול" כדי לצאת מאשף ההתקנה.</String>
+  
+  <String Id="InstallDirDlgTitle">בחר תיקיית התקנה</String>
+  <String Id="InstallDirDlgDescription">[ProductName] יותקן בתיקייה הבאה. כדי להתקין בתיקייה אחרת, לחץ על "עיון" ובחר תיקייה אחרת.</String>
+  <String Id="InstallDirDlgBrowse">עיון...</String>
+  <String Id="InstallDirDlgFolderLabel">תיקייה:</String>
+  
+  <String Id="VerifyReadyDlgTitle">מוכן להתקנה</String>
+  <String Id="VerifyReadyDlgInstallTitle">מוכן להתקין את [ProductName]</String>
+  <String Id="VerifyReadyDlgInstallText">לחץ על "התקן" כדי להתחיל בהתקנה. אם ברצונך לשנות את הגדרות ההתקנה, לחץ על "הקודם".</String>
+  
+  <String Id="ProgressDlgTitle">מתקין את [ProductName]</String>
+  <String Id="ProgressDlgTitleInstalling">מתקין</String>
+  <String Id="ProgressDlgTextInstalling">אנא המתן בזמן שאשף ההתקנה מתקין את [ProductName].</String>
+  
+  <String Id="ExitDlgTitle">התקנת [ProductName] הושלמה</String>
+  <String Id="ExitDlgDescription">לחץ על "סיום" כדי לצאת מאשף ההתקנה.</String>
+  <String Id="ExitDlgLaunchCheckbox">הפעל את [ProductName]</String>
+  
+  <!-- Buttons -->
+  <String Id="WixUIBack">הקודם</String>
+  <String Id="WixUINext">הבא</String>
+  <String Id="WixUICancel">ביטול</String>
+  <String Id="WixUIInstall">התקן</String>
+  <String Id="WixUIFinish">סיום</String>
+  <String Id="WixUIBrowse">עיון</String>
+  <String Id="WixUIYes">כן</String>
+  <String Id="WixUINo">לא</String>
+  <String Id="WixUIOK">אישור</String>
+  
+  <!-- Error messages -->
+  <String Id="CancelDlgTitle">ביטול התקנה</String>
+  <String Id="CancelDlgText">האם אתה בטוח שברצונך לבטל את ההתקנה?</String>
+  
+  <String Id="ErrorDlgTitle">שגיאה</String>
+  <String Id="FatalErrorTitle">שגיאה חמורה</String>
+  <String Id="FatalErrorDescription">אירעה שגיאה חמורה במהלך ההתקנה.</String>
+  
+  <!-- Maintenance -->
+  <String Id="MaintenanceTypeDlgTitle">שינוי, תיקון או הסרה</String>
+  <String Id="MaintenanceTypeDlgDescription">בחר את סוג הפעולה שברצונך לבצע.</String>
+  <String Id="MaintenanceTypeDlgRepairButton">תיקון</String>
+  <String Id="MaintenanceTypeDlgRepairText">תקן שגיאות בהתקנה הנוכחית.</String>
+  <String Id="MaintenanceTypeDlgRemoveButton">הסרה</String>
+  <String Id="MaintenanceTypeDlgRemoveText">הסר את [ProductName] מהמחשב.</String>
+  
+  <!-- Uninstall -->
+  <String Id="ConfirmRemoveDlgTitle">הסרת [ProductName]</String>
+  <String Id="ConfirmRemoveDlgDescription">האם אתה בטוח שברצונך להסיר את [ProductName]?</String>
+  
+  <String Id="RemoveProgressDlgTitle">מסיר את [ProductName]</String>
+  <String Id="RemoveProgressDlgText">אנא המתן בזמן שאשף ההתקנה מסיר את [ProductName].</String>
+  
+  <String Id="RemoveCompleteDlgTitle">הסרת [ProductName] הושלמה</String>
+  <String Id="RemoveCompleteDlgDescription">[ProductName] הוסר בהצלחה מהמחשב שלך.</String>
+  
+  <!-- Shortcuts -->
+  <String Id="DesktopShortcutCheckbox">צור קיצור דרך בשולחן העבודה</String>
+  <String Id="StartMenuShortcutCheckbox">צור קיצור דרך בתפריט התחל</String>
+  
+  <!-- License -->
+  <String Id="LicenseAgreementDlgTitle">הסכם רישיון</String>
+  <String Id="LicenseAgreementDlgDescription">אנא קרא את הסכם הרישיון הבא בעיון.</String>
+  <String Id="LicenseAgreementDlgAccept">אני מקבל את תנאי הסכם הרישיון</String>
+  <String Id="LicenseAgreementDlgDecline">אני לא מקבל את תנאי הסכם הרישיון</String>
+  
+  <!-- Disk space -->
+  <String Id="DiskSpaceRequirements">דרישות שטח דיסק</String>
+  <String Id="DiskSpaceAvailable">שטח פנוי:</String>
+  <String Id="DiskSpaceRequired">שטח נדרש:</String>
+  
+  <!-- Status messages -->
+  <String Id="StatusInstalling">מתקין...</String>
+  <String Id="StatusRemoving">מסיר...</String>
+  <String Id="StatusRepairing">מתקן...</String>
+  <String Id="StatusRollback">מבטל שינויים...</String>
+</WixLocalization>
