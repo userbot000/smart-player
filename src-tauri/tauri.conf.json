@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "נגן חכם",
+        "title": "Smart Player",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
@@ -38,10 +38,10 @@
         "language": "he-IL"
       }
     },
-    "shortDescription": "נגן מוזיקה חכם",
-    "longDescription": "נגן מוזיקה חכם עם תמיכה בהורדות, ניהול ספרייה ועוד",
-    "copyright": "© 2024 נגן חכם",
+    "shortDescription": "Smart Music Player",
+    "longDescription": "Smart music player with downloads, library management and more",
+    "copyright": "2024 Smart Player",
     "category": "Music",
-    "publisher": "נגן חכם"
+    "publisher": "Smart Player"
   }
 }

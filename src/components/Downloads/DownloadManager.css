@@ -4,6 +4,8 @@
 
 .download-manager {
   max-width: 700px;
+  direction: rtl;
+  text-align: right;
 }
 
 .download-manager__form {
@@ -14,6 +16,8 @@
 
 .download-manager__input {
   flex: 1;
+  direction: ltr;
+  text-align: left;
 }
 
 .download-manager__list h3 {
