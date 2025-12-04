@@ -52,7 +52,9 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
   // Update end time when song changes
   useEffect(() => {
     if (selectedSong) {
-      const maxDuration = Math.min(selectedSong.duration, 30);
+      // Use a reasonable default if duration is not set
+      const songDuration = selectedSong.duration > 0 ? selectedSong.duration : 180;
+      const maxDuration = Math.min(songDuration, 30);
       setEndTime(maxDuration);
       setStartTime(0);
       setRingtoneTitle(`${selectedSong.title} - רינגטון`);
@@ -125,9 +127,19 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
     };
 
     const handleLoadedMetadata = () => {
-      // Update duration if it was unknown
-      if (audio.duration && audio.duration !== Infinity) {
-        setSelectedSong(prev => prev ? { ...prev, duration: audio.duration } : null);
+      // Update duration and end time when audio loads
+      if (audio.duration && audio.duration !== Infinity && audio.duration > 0) {
+        console.log('Audio loaded, duration:', audio.duration);
+        
+        // Update the selected song with real duration
+        setSelectedSong(prev => {
+          if (!prev) return null;
+          return { ...prev, duration: audio.duration };
+        });
+        
+        // Update end time to match real duration (max 30 seconds)
+        const maxDuration = Math.min(audio.duration, 30);
+        setEndTime(maxDuration);
       }
     };
 
@@ -138,7 +150,7 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
-  }, [startTime, endTime, selectedSong]);
+  }, [startTime, endTime]);
 
 
   // Convert pixel position to time

@@ -8,7 +8,6 @@ import {
   useId,
   ToastIntent,
 } from '@fluentui/react-components';
-import './Toast.css';
 
 interface ToastContextType {
   showToast: (message: string, title?: string, intent?: ToastIntent) => void;

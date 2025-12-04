@@ -46,46 +46,87 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showError } = useToast();
 
-  // Set initial song if provided
+  // Set initial song if provided - load fresh metadata from file!
   useEffect(() => {
     if (initialSong && !selectedSong) {
-      setSelectedSong(initialSong);
-      setMetadata({
-        title: initialSong.title,
-        artist: initialSong.artist,
-        album: initialSong.album || '',
-        genre: initialSong.genre || '',
-      });
-      
-      // Load cover image and convert to ArrayBuffer if exists
-      if (initialSong.coverUrl) {
-        setCoverImage(initialSong.coverUrl);
+      const loadInitialSong = async () => {
+        setIsLoadingSong(true);
         
-        // Convert data URL to ArrayBuffer for saving
         try {
-          if (initialSong.coverUrl.startsWith('data:')) {
-            const base64 = initialSong.coverUrl.split(',')[1];
-            const binaryString = atob(base64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
+          // Load fresh metadata from the actual file
+          let freshMetadata = {
+            title: initialSong.title,
+            artist: initialSong.artist,
+            album: initialSong.album || '',
+            genre: initialSong.genre || '',
+          };
+          let freshCover: string | null = initialSong.coverUrl || null;
+          let freshCoverData: ArrayBuffer | null = null;
+          
+          // Try to load metadata from file if we have a path
+          if (initialSong.originalPath) {
+            try {
+              const { readAudioFile } = await import('../../db/database');
+              const { extractMetadataFromBuffer } = await import('../../utils/audioMetadata');
+              
+              const audioData = await readAudioFile(initialSong.originalPath);
+              if (audioData) {
+                const fileName = initialSong.originalPath.split(/[/\\]/).pop() || 'Unknown';
+                const meta = await extractMetadataFromBuffer(audioData, fileName);
+                
+                // Use fresh metadata from file
+                freshMetadata = {
+                  title: meta.title || initialSong.title,
+                  artist: meta.artist || initialSong.artist,
+                  album: meta.album || initialSong.album || '',
+                  genre: meta.genre || initialSong.genre || '',
+                };
+                
+                if (meta.coverUrl) {
+                  freshCover = meta.coverUrl;
+                }
+              }
+            } catch (err) {
+              console.warn('Could not load fresh metadata, using cached:', err);
             }
-            setCoverImageData(bytes.buffer);
-          } else {
-            setCoverImageData(null);
           }
+          
+          setSelectedSong(initialSong);
+          setMetadata(freshMetadata);
+          
+          // Load cover image and convert to ArrayBuffer if exists
+          if (freshCover) {
+            setCoverImage(freshCover);
+            
+            // Convert data URL to ArrayBuffer for saving
+            try {
+              if (freshCover.startsWith('data:')) {
+                const base64 = freshCover.split(',')[1];
+                const binaryString = atob(base64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                freshCoverData = bytes.buffer;
+              }
+            } catch (err) {
+              console.error('Failed to convert cover image:', err);
+            }
+          }
+          
+          setCoverImageData(freshCoverData);
+          setHasChanges(false);
         } catch (err) {
-          console.error('Failed to convert cover image:', err);
-          setCoverImageData(null);
+          console.error('Error loading initial song:', err);
+          showError('שגיאה בטעינת השיר');
+        } finally {
+          setIsLoadingSong(false);
         }
-      } else {
-        setCoverImage(null);
-        setCoverImageData(null);
-      }
+      };
       
-      setHasChanges(false);
+      loadInitialSong();
     }
-  }, [initialSong, selectedSong]);
+  }, [initialSong, selectedSong, showError]);
 
   const handleSongSelect = async (songId: string) => {
     const song = songs.find((s) => s.id === songId);
