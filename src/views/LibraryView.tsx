@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Library24Regular, History24Regular, Heart24Regular } from '@fluentui/react-icons';
 import { Song } from '../types';
-import { SongList, FolderTreeView, AddSongsButton } from '../components';
+import { SongList, FolderTreeView, LibraryActions } from '../components';
 
 interface LibraryViewProps {
   songs: Song[];
@@ -59,7 +59,7 @@ export function LibraryView({
       <div className="view__header">
         <h2 className="view__title">{title}</h2>
         <div className="view__header-actions">
-          {showAddButton && <AddSongsButton onSongsAdded={onSongsAdded} />}
+          {showAddButton && <LibraryActions onSongsAdded={onSongsAdded} />}
         </div>
       </div>
 
