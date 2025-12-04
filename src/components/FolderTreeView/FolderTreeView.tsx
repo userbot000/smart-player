@@ -115,20 +115,6 @@ export function FolderTreeView({ songs, onDelete, onToggleFavorite }: FolderTree
   return (
     <div className="folder-tree">
       <div className="folder-tree__header">
-        <div className="folder-tree__nav">
-          {currentPath.length > 0 && (
-            <Button
-              appearance="subtle"
-              icon={<ArrowLeft24Regular />}
-              onClick={handleBack}
-            >
-              חזור
-            </Button>
-          )}
-          <span className="folder-tree__path">
-            {currentPath.length === 0 ? 'תיקייה ראשית' : currentPath.join(' / ')}
-          </span>
-        </div>
         <div className="folder-tree__actions">
           <Input
             placeholder="חיפוש..."
@@ -142,6 +128,20 @@ export function FolderTreeView({ songs, onDelete, onToggleFavorite }: FolderTree
               נגן הכל
             </Button>
           )}
+        </div>
+        <div className="folder-tree__nav">
+          {currentPath.length > 0 && (
+            <Button
+              appearance="subtle"
+              icon={<ArrowLeft24Regular />}
+              onClick={handleBack}
+            >
+              חזור
+            </Button>
+          )}
+          <span className="folder-tree__path">
+            {currentPath.length === 0 ? 'תיקייה ראשית' : currentPath.join(' / ')}
+          </span>
         </div>
       </div>
 

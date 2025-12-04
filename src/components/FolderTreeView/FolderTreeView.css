@@ -16,6 +16,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--surface-secondary);
+  margin-bottom: 12px;
 }
 
 .folder-tree__path {
@@ -26,8 +29,9 @@
 
 .folder-tree__actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
+  margin-bottom: 12px;
 }
 
 .folder-tree__search {

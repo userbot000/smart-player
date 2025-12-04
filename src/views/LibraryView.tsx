@@ -1,7 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Library24Regular, History24Regular, Heart24Regular } from '@fluentui/react-icons';
-import { Button } from '@fluentui/react-components';
-import { List24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
 import { Song } from '../types';
 import { SongList, FolderTreeView, AddSongsButton } from '../components';
 
@@ -24,7 +22,8 @@ export function LibraryView({
   viewType = 'library',
   showAddButton = true,
 }: LibraryViewProps) {
-  const [viewMode, setViewMode] = useState<'list' | 'folders'>('folders');
+  // Always use folder view if there are subfolders
+  const viewMode = 'folders';
 
   // Check if any songs have subfolders
   const hasFolders = useMemo(() => {
@@ -60,26 +59,6 @@ export function LibraryView({
       <div className="view__header">
         <h2 className="view__title">{title}</h2>
         <div className="view__header-actions">
-          {hasFolders && songs.length > 0 && (
-            <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
-              <Button
-                appearance={viewMode === 'list' ? 'primary' : 'subtle'}
-                icon={<List24Regular />}
-                onClick={() => setViewMode('list')}
-                size="small"
-              >
-                רשימה
-              </Button>
-              <Button
-                appearance={viewMode === 'folders' ? 'primary' : 'subtle'}
-                icon={<FolderOpen24Regular />}
-                onClick={() => setViewMode('folders')}
-                size="small"
-              >
-                תיקיות
-              </Button>
-            </div>
-          )}
           {showAddButton && <AddSongsButton onSongsAdded={onSongsAdded} />}
         </div>
       </div>
