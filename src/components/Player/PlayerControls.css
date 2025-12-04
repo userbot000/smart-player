@@ -163,25 +163,28 @@
 /* Make slider track more visible */
 .player__volume-slider .fui-Slider__rail,
 .player__slider .fui-Slider__rail {
-  background: rgba(128, 128, 128, 0.4) !important;
+  background: rgba(128, 128, 128, 0.3) !important;
   height: 6px !important;
   border-radius: 3px !important;
 }
 
-.player__volume-slider .fui-Slider__track,
-.player__slider .fui-Slider__track {
-  background: var(--color-primary) !important;
+/* Both sliders - the active part (in cyan/teal) */
+.player__slider .fui-Slider__track,
+.player__volume-slider .fui-Slider__track {
+  background: linear-gradient(90deg, #00bcd4, #0097a7) !important;
   height: 6px !important;
   border-radius: 3px !important;
+  box-shadow: 0 0 8px rgba(0, 188, 212, 0.4) !important;
 }
 
+/* Both sliders - thumb styling */
 .player__volume-slider .fui-Slider__thumb,
 .player__slider .fui-Slider__thumb {
   width: 14px !important;
   height: 14px !important;
-  background: var(--color-primary) !important;
-  border: 2px solid white !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  background: white !important;
+  border: 2px solid #00bcd4 !important;
+  box-shadow: 0 2px 6px rgba(0, 188, 212, 0.5) !important;
 }
 
 .player__volume-percent {
