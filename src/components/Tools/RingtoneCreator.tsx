@@ -49,9 +49,13 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
     }
   }, [initialSong]);
 
-  // Update end time when song changes
+  // Track the last song ID to detect actual song changes (not just duration updates)
+  const lastSongIdRef = useRef<string | null>(null);
+  
+  // Update end time when song changes (but not when only duration updates)
   useEffect(() => {
-    if (selectedSong) {
+    if (selectedSong && selectedSong.id !== lastSongIdRef.current) {
+      lastSongIdRef.current = selectedSong.id;
       // Use a reasonable default if duration is not set
       const songDuration = selectedSong.duration > 0 ? selectedSong.duration : 180;
       const maxDuration = Math.min(songDuration, 30);
@@ -136,19 +140,26 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
     };
 
     const handleLoadedMetadata = () => {
-      // Update duration and end time when audio loads
+      // Update duration when audio loads
       if (audio.duration && audio.duration !== Infinity && audio.duration > 0) {
         console.log('Audio loaded, duration:', audio.duration);
         
-        // Update the selected song with real duration
+        // Update the selected song with real duration (without triggering full reset)
         setSelectedSong(prev => {
           if (!prev) return null;
+          // Only update if duration actually changed
+          if (prev.duration === audio.duration) return prev;
           return { ...prev, duration: audio.duration };
         });
         
-        // Update end time to match real duration (max 30 seconds)
-        const maxDuration = Math.min(audio.duration, 30);
-        setEndTime(maxDuration);
+        // Only adjust end time if it exceeds the actual duration
+        // Don't reset if user already adjusted the range
+        setEndTime(prev => {
+          if (prev > audio.duration) {
+            return Math.min(audio.duration, 30);
+          }
+          return prev;
+        });
       }
     };
 
