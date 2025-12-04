@@ -177,14 +177,22 @@
   box-shadow: 0 0 8px rgba(0, 188, 212, 0.4) !important;
 }
 
-/* Both sliders - thumb styling */
-.player__volume-slider .fui-Slider__thumb,
+/* Progress slider thumb - white with primary color border */
 .player__slider .fui-Slider__thumb {
   width: 14px !important;
   height: 14px !important;
   background: white !important;
-  border: 2px solid #00bcd4 !important;
-  box-shadow: 0 2px 6px rgba(0, 188, 212, 0.5) !important;
+  border: 2px solid var(--color-primary) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Volume slider thumb - same style */
+.player__volume-slider .fui-Slider__thumb {
+  width: 14px !important;
+  height: 14px !important;
+  background: white !important;
+  border: 2px solid var(--color-primary) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }
 
 .player__volume-percent {

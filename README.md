@@ -2,6 +2,9 @@
 
 נגן מוזיקה חכם ומתקדם עם ממשק בעברית, תמיכה בהורדות מיוטיוב, וניהול ספרייה מתקדם.
 
+[![Windows Build](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/build.yml)
+[![Android Init](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/android-init.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/android-init.yml)
+
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-3DDC84?style=flat&logo=android&logoColor=white)
 ![Tauri](https://img.shields.io/badge/Tauri-FFC131?style=flat&logo=tauri&logoColor=white)
@@ -84,8 +87,9 @@ npm run tauri build
 
 ## 📖 תיעוד
 
+- **[QUICK_START_ANDROID.md](QUICK_START_ANDROID.md)** - 🚀 בניית Android ב-GitHub (מומלץ!)
 - **[CHECKLIST.md](CHECKLIST.md)** - מצב מוכנות הפרויקט
-- **[ANDROID_SETUP.md](ANDROID_SETUP.md)** - הכנה לאנדרואיד
+- **[ANDROID_SETUP.md](ANDROID_SETUP.md)** - הכנה מקומית לאנדרואיד
 - **[.github/RELEASE.md](.github/RELEASE.md)** - מדריך יצירת releases
 
 ## 🏗️ טכנולוגיות
