@@ -8,12 +8,6 @@ import {
   useId,
   ToastIntent,
 } from '@fluentui/react-components';
-import {
-  CheckmarkCircle24Regular,
-  DismissCircle24Regular,
-  Warning24Regular,
-  Info24Regular,
-} from '@fluentui/react-icons';
 import './Toast.css';
 
 interface ToastContextType {
@@ -42,30 +36,14 @@ export function ToastProvider({ children }: ToastProviderProps) {
   const toasterId = useId('toaster');
   const { dispatchToast } = useToastController(toasterId);
 
-  const getIcon = (intent: ToastIntent) => {
-    switch (intent) {
-      case 'success':
-        return <CheckmarkCircle24Regular />;
-      case 'error':
-        return <DismissCircle24Regular />;
-      case 'warning':
-        return <Warning24Regular />;
-      case 'info':
-      default:
-        return <Info24Regular />;
-    }
-  };
-
   const showToast = useCallback(
     (message: string, title?: string, intent: ToastIntent = 'info') => {
       dispatchToast(
         <Toast>
-          <ToastTitle media={getIcon(intent)}>
-            {title || (intent === 'success' ? 'הצלחה' : intent === 'error' ? 'שגיאה' : intent === 'warning' ? 'אזהרה' : 'מידע')}
-          </ToastTitle>
+          {title && <ToastTitle>{title}</ToastTitle>}
           <ToastBody>{message}</ToastBody>
         </Toast>,
-        { intent, timeout: 3000, position: 'top-end' }
+        { intent, timeout: 2500, position: 'bottom-start' }
       );
     },
     [dispatchToast]
@@ -94,7 +72,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ showToast, showSuccess, showError, showWarning, showInfo }}>
       {children}
-      <Toaster toasterId={toasterId} position="top-end" />
+      <Toaster toasterId={toasterId} position="bottom-start" />
     </ToastContext.Provider>
   );
 }
