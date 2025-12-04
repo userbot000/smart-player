@@ -33,6 +33,9 @@
         }
       ]
     },
+    "shell:allow-spawn",
+    "shell:allow-stdin-write",
+    "shell:allow-kill",
     "notification:default",
     "notification:allow-is-permission-granted",
     "notification:allow-request-permission",

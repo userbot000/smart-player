@@ -455,18 +455,37 @@ export async function downloadYouTubeAudio(
     console.log('  URL:', url);
     console.log('  Output:', outputTemplate);
 
-    // Run yt-dlp via PowerShell (required by Tauri shell permissions)
+    // Simplify URL - remove https://www. prefix as it works better without
+    const simplifiedUrl = url
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '');
+
+    // Build simple PowerShell command that runs from bin directory
+    const psCommand = `
+      Set-Location '${binDir}'
+      .\\yt-dlp.exe '${simplifiedUrl}' --ffmpeg-location '.' --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o '${outputTemplate}' --print "after_move:filepath" --no-playlist
+    `;
+
+    console.log('Running yt-dlp from bin directory');
+    console.log('Simplified URL:', simplifiedUrl);
+
+    // Run yt-dlp via PowerShell from bin directory
     const command = Command.create('powershell', [
       '-NoProfile',
+      '-ExecutionPolicy', 'Bypass',
       '-Command',
-      `& "${ytDlpPath}" "${url}" --ffmpeg-location "${binDir}" --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "${outputTemplate}" --print "after_move:filepath" --no-playlist`
+      psCommand
     ]);
 
     let filePath = '';
     let lastError = '';
+    let allOutput = '';
 
     return new Promise((resolve) => {
       command.on('close', (data) => {
+        console.log('yt-dlp process closed with code:', data.code);
+        console.log('All output:', allOutput);
+        
         if (data.code === 0 && filePath) {
           onProgress?.({ percent: 100, status: 'done', message: 'הושלם!' });
           resolve({
@@ -475,14 +494,36 @@ export async function downloadYouTubeAudio(
             title: filePath.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '')
           });
         } else {
-          resolve({
-            success: false,
-            error: lastError || 'שגיאה בהורדה'
-          });
+          // Try to find file path in output even if exit code is non-zero
+          const lines = allOutput.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if ((trimmed.includes('.mp3') || trimmed.includes('.m4a')) &&
+                (trimmed.includes('\\') || trimmed.includes('/')) &&
+                !trimmed.startsWith('[') && !trimmed.includes('ERROR')) {
+              filePath = trimmed;
+              break;
+            }
+          }
+          
+          if (filePath) {
+            onProgress?.({ percent: 100, status: 'done', message: 'הושלם!' });
+            resolve({
+              success: true,
+              filePath,
+              title: filePath.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '')
+            });
+          } else {
+            resolve({
+              success: false,
+              error: lastError || 'שגיאה בהורדה - בדוק את הקישור'
+            });
+          }
         }
       });
 
       command.on('error', (error) => {
+        console.error('Command error event:', error);
         resolve({
           success: false,
           error: error || 'שגיאה בהורדה'
@@ -493,10 +534,10 @@ export async function downloadYouTubeAudio(
         const trimmed = line.trim();
         if (!trimmed) return;
 
+        allOutput += line + '\n';
         console.log('[yt-dlp stdout]:', trimmed);
 
         // Check if this is the final filepath output
-        // Look for lines that contain a full path with audio extension
         if ((trimmed.includes('.mp3') || trimmed.includes('.m4a') || trimmed.includes('.opus')) &&
           (trimmed.includes('\\') || trimmed.includes('/')) &&
           !trimmed.startsWith('[')) {
@@ -520,17 +561,42 @@ export async function downloadYouTubeAudio(
 
       command.stderr.on('data', (line) => {
         const trimmed = line.trim();
+        allOutput += line + '\n';
         console.log('[yt-dlp stderr]:', trimmed);
 
-        if (trimmed && !trimmed.startsWith('WARNING')) {
+        // Check for specific blocking errors
+        if (trimmed.includes('NetFree') || trimmed.includes('Blocked')) {
+          lastError = 'הגישה ליוטיוב חסומה על ידי פילטר האינטרנט (NetFree)';
+        } else if (trimmed.includes('HTTP Error 403') || trimmed.includes('Forbidden')) {
+          lastError = 'הגישה נדחתה - יתכן שיוטיוב חסום';
+        } else if (trimmed.includes('Video unavailable') || trimmed.includes('Private video')) {
+          lastError = 'הסרטון לא זמין או פרטי';
+        } else if (trimmed.includes('Sign in to confirm') || trimmed.includes('age')) {
+          lastError = 'הסרטון דורש אימות גיל';
+        } else if (trimmed && !trimmed.startsWith('WARNING')) {
           lastError = trimmed;
         }
       });
 
       command.spawn().catch((err) => {
+        console.error('Failed to spawn yt-dlp command:', err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        
+        // Provide more helpful error messages
+        let userError = 'שגיאה בהפעלת yt-dlp';
+        if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
+          userError = 'אין הרשאה להפעיל פקודות. נסה להפעיל מחדש את האפליקציה.';
+        } else if (errorMessage.includes('not found') || errorMessage.includes('No such file')) {
+          userError = 'yt-dlp לא נמצא. לחץ על "עדכן" כדי להתקין.';
+        } else if (errorMessage.includes('program not allowed')) {
+          userError = 'הפקודה לא מורשית. נסה להפעיל מחדש את האפליקציה.';
+        } else if (errorMessage) {
+          userError = `שגיאה: ${errorMessage}`;
+        }
+        
         resolve({
           success: false,
-          error: err instanceof Error ? err.message : 'שגיאה בהפעלת yt-dlp'
+          error: userError
         });
       });
     });
