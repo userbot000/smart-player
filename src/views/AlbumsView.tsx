@@ -24,7 +24,7 @@ export function AlbumsView({ songs }: AlbumsViewProps) {
 
     songs.forEach((song) => {
       if (song.album) {
-        const key = `${song.album}-${song.artist}`;
+        const key = song.album; // Group only by album name
         if (!albumMap.has(key)) {
           albumMap.set(key, {
             name: song.album,
@@ -32,6 +32,16 @@ export function AlbumsView({ songs }: AlbumsViewProps) {
             coverUrl: song.coverUrl,
             songs: [],
           });
+        } else {
+          // If album exists, merge artists
+          const album = albumMap.get(key)!;
+          if (!album.artist.includes(song.artist)) {
+            album.artist = `${album.artist} & ${song.artist}`;
+          }
+          // Update cover if current song has one and album doesn't
+          if (!album.coverUrl && song.coverUrl) {
+            album.coverUrl = song.coverUrl;
+          }
         }
         albumMap.get(key)!.songs.push(song);
       }
@@ -86,7 +96,7 @@ export function AlbumsView({ songs }: AlbumsViewProps) {
         <div className="albums-view__grid">
           {albums.map((album) => (
             <div
-              key={`${album.name}-${album.artist}`}
+              key={album.name}
               className="albums-view__card"
               onClick={() => setSelectedAlbum(album)}
             >
