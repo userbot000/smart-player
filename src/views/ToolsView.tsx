@@ -52,9 +52,15 @@ export function ToolsView({ songs, onSongUpdated, initialSong, initialTab }: Too
       </TabList>
 
       <div className="tools-view__content">
-        {selectedTab === 'ringtone' && <RingtoneCreator songs={songs} initialSong={initialSong} />}
-        {selectedTab === 'metadata' && <MetadataEditor songs={songs} onSongUpdated={onSongUpdated} initialSong={initialSong} />}
-        {selectedTab === 'organizer' && <SinglesOrganizer onSongsUpdated={onSongUpdated} />}
+        <div style={{ display: selectedTab === 'ringtone' ? 'block' : 'none' }}>
+          <RingtoneCreator songs={songs} initialSong={initialSong} />
+        </div>
+        <div style={{ display: selectedTab === 'metadata' ? 'block' : 'none' }}>
+          <MetadataEditor songs={songs} onSongUpdated={onSongUpdated} initialSong={initialSong} />
+        </div>
+        <div style={{ display: selectedTab === 'organizer' ? 'block' : 'none' }}>
+          <SinglesOrganizer onSongsUpdated={onSongUpdated} />
+        </div>
       </div>
 
       <style>{`
