@@ -96,6 +96,12 @@ export function useAudioPlayer() {
             isLoadingRef.current = false;
             setDuration(howl.duration() || 0);
 
+            // Resume from saved position if available
+            const savedProgress = usePlayerStore.getState().progress;
+            if (savedProgress > 0 && savedProgress < howl.duration()) {
+              howl.seek(savedProgress);
+            }
+
             if (usePlayerStore.getState().isPlaying) {
               howl.play();
             }
