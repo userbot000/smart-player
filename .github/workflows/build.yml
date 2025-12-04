@@ -56,6 +56,8 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    # Only run if Android is initialized (gen/android folder exists)
+    if: false  # Set to true after running 'npm run tauri android init'
 
     steps:
       - name: Checkout
@@ -95,7 +97,7 @@ jobs:
         run: npm ci --prefer-offline --no-audit
 
       - name: Build Android APK
-        run: npm run tauri android build -- --apk
+        run: npm run tauri android build -- --target aarch64 --apk
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 

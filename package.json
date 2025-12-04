@@ -12,7 +12,10 @@
     "tauri": "tauri",
     "tauri:android:init": "tauri android init",
     "tauri:android:dev": "tauri android dev",
-    "tauri:android:build": "tauri android build"
+    "tauri:android:build": "tauri android build",
+    "tauri:android:build:apk": "tauri android build --target aarch64 --apk",
+    "tauri:android:build:apk:universal": "tauri android build --target universal --apk",
+    "tauri:android:build:apk:all": "tauri android build --target aarch64 --apk && tauri android build --target armv7 --apk"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.72.7",

@@ -49,12 +49,22 @@ git push origin main
 
 ה-workflow יבנה את כל הפלטפורמות ויעלה artifacts לבדיקה.
 
+## הכנה לאנדרואיד
+
+**חשוב**: הפרויקט עדיין לא מוכן לבניית Android!
+
+לפני שתוכל לבנות Android, עליך:
+1. לעקוב אחר ההוראות ב-`ANDROID_SETUP.md`
+2. להריץ `npm run tauri android init`
+3. לשנות `if: false` ל-`if: true` ב-workflows (build.yml ו-release.yml)
+
 ## פתרון בעיות
 
 ### Android build נכשל
-- ודא ש-Android support מאותחל: `npm run tauri:android:init`
+- ודא ש-Android support מאותחל: `npm run tauri android init`
 - בדוק שיש NDK מותקן
 - ודא שכל ה-targets של Rust מותקנים
+- ראה `ANDROID_SETUP.md` למדריך מלא
 
 ### Windows build נכשל
 - בדוק שיש Rust toolchain מותקן

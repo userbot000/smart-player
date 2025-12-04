@@ -1,0 +1,213 @@
+name: Initialize and Build Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'App Name'
+        required: false
+        default: 'Smart Player'
+      app_identifier:
+        description: 'App Identifier (e.g., com.smartplayer.app)'
+        required: false
+        default: 'com.smartplayer.app'
+
+jobs:
+  init-and-build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Android targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add x86_64-linux-android
+          rustup target add i686-linux-android
+
+      - name: Setup Android SDK & NDK
+        run: |
+          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Check if Android already initialized
+        id: check_android
+        run: |
+          if [ -d "src-tauri/gen/android" ]; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+            echo "Android already initialized"
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+            echo "Android not initialized yet"
+          fi
+
+      - name: Initialize Android (if needed)
+        if: steps.check_android.outputs.initialized == 'false'
+        run: |
+          # Create expect script for automated input
+          cat > init_android.exp << 'EOF'
+          #!/usr/bin/expect -f
+          set timeout -1
+          spawn npm run tauri android init
+          
+          expect "What is your app name?*"
+          send "$env(APP_NAME)\r"
+          
+          expect "What should the Android package identifier be?*"
+          send "$env(APP_IDENTIFIER)\r"
+          
+          expect eof
+          EOF
+          
+          chmod +x init_android.exp
+          
+          # Install expect
+          sudo apt-get update
+          sudo apt-get install -y expect
+          
+          # Run initialization
+          export APP_NAME="${{ inputs.app_name }}"
+          export APP_IDENTIFIER="${{ inputs.app_identifier }}"
+          ./init_android.exp
+
+      - name: Configure Android Permissions
+        if: steps.check_android.outputs.initialized == 'false'
+        run: |
+          MANIFEST_PATH="src-tauri/gen/android/app/src/main/AndroidManifest.xml"
+          
+          # Add permissions before </manifest>
+          sed -i 's|</manifest>|    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n</manifest>|' "$MANIFEST_PATH"
+          
+          echo "Android permissions configured"
+
+      - name: Commit Android initialization (if new)
+        if: steps.check_android.outputs.initialized == 'false'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add src-tauri/gen/android
+          git add src-tauri/tauri.conf.json
+          git commit -m "Initialize Android support" || echo "No changes to commit"
+          git push
+
+      - name: Build Android APK (ARM64)
+        run: npm run tauri android build -- --target aarch64 --apk
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Build Android APK (ARMv7)
+        run: npm run tauri android build -- --target armv7 --apk
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+        continue-on-error: true
+
+      - name: Build Android APK (Universal)
+        run: npm run tauri android build -- --target universal --apk
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+        continue-on-error: true
+
+      - name: Find APK files
+        id: find_apk
+        run: |
+          echo "Finding APK files..."
+          find src-tauri/gen/android -name "*.apk" -type f
+          
+          APK_ARM64=$(find src-tauri/gen/android -name "*arm64-v8a*.apk" -o -name "*aarch64*.apk" | head -n 1)
+          APK_ARMV7=$(find src-tauri/gen/android -name "*armeabi-v7a*.apk" -o -name "*armv7*.apk" | head -n 1)
+          APK_UNIVERSAL=$(find src-tauri/gen/android -name "*universal*.apk" | head -n 1)
+          
+          echo "apk_arm64=$APK_ARM64" >> $GITHUB_OUTPUT
+          echo "apk_armv7=$APK_ARMV7" >> $GITHUB_OUTPUT
+          echo "apk_universal=$APK_UNIVERSAL" >> $GITHUB_OUTPUT
+          
+          echo "ARM64: $APK_ARM64"
+          echo "ARMv7: $APK_ARMV7"
+          echo "Universal: $APK_UNIVERSAL"
+
+      - name: Upload ARM64 APK
+        if: steps.find_apk.outputs.apk_arm64 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-player-android-arm64
+          path: ${{ steps.find_apk.outputs.apk_arm64 }}
+          if-no-files-found: warn
+
+      - name: Upload ARMv7 APK
+        if: steps.find_apk.outputs.apk_armv7 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-player-android-armv7
+          path: ${{ steps.find_apk.outputs.apk_armv7 }}
+          if-no-files-found: warn
+
+      - name: Upload Universal APK
+        if: steps.find_apk.outputs.apk_universal != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-player-android-universal
+          path: ${{ steps.find_apk.outputs.apk_universal }}
+          if-no-files-found: warn
+
+      - name: Upload all APKs (fallback)
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-player-android-all-apks
+          path: src-tauri/gen/android/**/outputs/apk/**/*.apk
+          if-no-files-found: warn
+
+      - name: Summary
+        run: |
+          echo "## Android Build Complete! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### APK Files Built:" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -n "${{ steps.find_apk.outputs.apk_arm64 }}" ]; then
+            echo "- ✅ ARM64 APK" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -n "${{ steps.find_apk.outputs.apk_armv7 }}" ]; then
+            echo "- ✅ ARMv7 APK" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -n "${{ steps.find_apk.outputs.apk_universal }}" ]; then
+            echo "- ✅ Universal APK" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the APK files from the Artifacts section above." >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_android.outputs.initialized }}" == "false" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Android has been initialized and committed to the repository" >> $GITHUB_STEP_SUMMARY
+            echo "2. Enable Android builds in workflows by changing \`if: false\` to \`if: true\`" >> $GITHUB_STEP_SUMMARY
+            echo "3. Future builds will use the initialized Android project" >> $GITHUB_STEP_SUMMARY
+          fi
