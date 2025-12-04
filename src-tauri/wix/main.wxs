@@ -3,44 +3,54 @@
   <Fragment>
     <DirectoryRef Id="INSTALLDIR">
       <Component Id="ContextMenuRegistration" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+        <!-- MP3 Context Menu -->
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.mp3\shell\SmartPlayer">
           <RegistryValue Type="string" Value="Play with Smart Player" />
-          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]Smart Player.exe,0" />
+          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]smart-player.exe,0" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.mp3\shell\SmartPlayer\command">
-          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]Smart Player.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]smart-player.exe&quot; &quot;%1&quot;" />
         </RegistryKey>
+        
+        <!-- WAV Context Menu -->
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.wav\shell\SmartPlayer">
           <RegistryValue Type="string" Value="Play with Smart Player" />
-          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]Smart Player.exe,0" />
+          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]smart-player.exe,0" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.wav\shell\SmartPlayer\command">
-          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]Smart Player.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]smart-player.exe&quot; &quot;%1&quot;" />
         </RegistryKey>
+        
+        <!-- FLAC Context Menu -->
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.flac\shell\SmartPlayer">
           <RegistryValue Type="string" Value="Play with Smart Player" />
-          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]Smart Player.exe,0" />
+          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]smart-player.exe,0" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.flac\shell\SmartPlayer\command">
-          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]Smart Player.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]smart-player.exe&quot; &quot;%1&quot;" />
         </RegistryKey>
+        
+        <!-- M4A Context Menu -->
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.m4a\shell\SmartPlayer">
           <RegistryValue Type="string" Value="Play with Smart Player" />
-          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]Smart Player.exe,0" />
+          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]smart-player.exe,0" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.m4a\shell\SmartPlayer\command">
-          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]Smart Player.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]smart-player.exe&quot; &quot;%1&quot;" />
         </RegistryKey>
+        
+        <!-- OGG Context Menu -->
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.ogg\shell\SmartPlayer">
           <RegistryValue Type="string" Value="Play with Smart Player" />
-          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]Smart Player.exe,0" />
+          <RegistryValue Type="string" Name="Icon" Value="[INSTALLDIR]smart-player.exe,0" />
         </RegistryKey>
         <RegistryKey Root="HKCR" Key="SystemFileAssociations\.ogg\shell\SmartPlayer\command">
-          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]Smart Player.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]smart-player.exe&quot; &quot;%1&quot;" />
         </RegistryKey>
       </Component>
     </DirectoryRef>
   </Fragment>
+  
   <Fragment>
     <ComponentGroup Id="ContextMenuComponents">
       <ComponentRef Id="ContextMenuRegistration" />
