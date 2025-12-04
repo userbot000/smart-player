@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Switch, Label, Button, Text, Input, Spinner } from '@fluentui/react-components';
+import { Label, Button, Text, Input, Spinner, RadioGroup, Radio } from '@fluentui/react-components';
 import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular } from '@fluentui/react-icons';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';
 import { getArtistFiltersAsync, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
+import { ThemeMode } from '../db/database';
 import {
   getTrackedChannels,
   getTrackedChannelsAsync,
@@ -13,8 +14,8 @@ import {
 } from '../utils/ytChannelTracker';
 
 interface SettingsViewProps {
-  isDark: boolean;
-  onThemeChange: (dark: boolean) => void;
+  themeMode: ThemeMode;
+  onThemeModeChange: (mode: ThemeMode) => void;
   onFoldersChanged: () => void;
   accentColor?: string;
   onAccentColorChange?: (color: string) => void;
@@ -30,7 +31,7 @@ const ACCENT_COLORS = [
   { id: 'teal', name: 'טורקיז', color: '#008272' },
 ];
 
-export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentColor = 'blue', onAccentColorChange }: SettingsViewProps) {
+export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, accentColor = 'blue', onAccentColorChange }: SettingsViewProps) {
   const [folders, setFolders] = useState<WatchedFolder[]>([]);
   const [filters, setFilters] = useState<ArtistFilters>({ id: 'filters', whitelist: [], blacklist: [] });
   const [newWhitelistArtist, setNewWhitelistArtist] = useState('');
@@ -131,13 +132,17 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
 
       <section className="settings-section">
         <h3 className="settings-section__title">מראה</h3>
-        <div className="settings-item">
-          <Label htmlFor="dark-mode">מצב כהה</Label>
-          <Switch
-            id="dark-mode"
-            checked={isDark}
-            onChange={(_, data) => onThemeChange(data.checked)}
-          />
+        <div className="settings-item settings-item--column">
+          <Label>ערכת נושא</Label>
+          <RadioGroup 
+            value={themeMode} 
+            onChange={(_, data) => onThemeModeChange(data.value as ThemeMode)}
+            layout="horizontal"
+          >
+            <Radio value="light" label="בהיר" />
+            <Radio value="dark" label="כהה" />
+            <Radio value="system" label="לפי מערכת" />
+          </RadioGroup>
         </div>
         <div className="settings-item settings-item--colors">
           <Label>צבע בסיס</Label>
@@ -408,6 +413,11 @@ export function SettingsView({ isDark, onThemeChange, onFoldersChanged, accentCo
           align-items: center;
           gap: var(--space-xs);
           flex-shrink: 0;
+        }
+        .settings-item--column {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--space-sm);
         }
         .settings-item--colors {
           flex-direction: column;

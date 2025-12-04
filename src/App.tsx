@@ -10,7 +10,7 @@ import { Sidebar, PlayerControls } from './components';
 import { ToastProvider } from './components/Toast/ToastProvider';
 import { HomeView, LibraryView, AlbumsView, ArtistsView, DownloadsView, SettingsView, ToolsView } from './views';
 import { Song, DownloadTask } from './types';
-import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences, getPlayerState, savePlayerState, addSong } from './db/database';
+import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences, getPlayerState, savePlayerState, addSong, ThemeMode } from './db/database';
 import { usePlayerStore } from './store/playerStore';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
@@ -25,9 +25,13 @@ function App() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [recentSongs, setRecentSongs] = useState<Song[]>([]);
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
-  const [isDark, setIsDark] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  const [systemDark, setSystemDark] = useState(false);
   const [accentColor, setAccentColor] = useState('blue');
   const [isAppReady, setIsAppReady] = useState(false);
+  
+  // Calculate actual dark mode based on themeMode and system preference
+  const isDark = themeMode === 'system' ? systemDark : themeMode === 'dark';
   
   const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue, setPlaying } = usePlayerStore();
 
@@ -240,6 +244,16 @@ function App() {
     return isDark ? createDarkTheme(brand) : createLightTheme(brand);
   }, [accentColor, isDark, brandColors]);
 
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setSystemDark(mediaQuery.matches);
+    
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
   // Apply accent color to CSS variables
   useEffect(() => {
     const colors: Record<string, string> = {
@@ -256,8 +270,8 @@ function App() {
     document.documentElement.style.setProperty('--color-primary-hover', color);
     document.documentElement.style.setProperty('--surface-selected', `${color}26`);
     // Save to IndexedDB
-    savePreferences({ accentColor, isDark });
-  }, [accentColor, isDark]);
+    savePreferences({ accentColor, themeMode });
+  }, [accentColor, themeMode]);
 
   useEffect(() => {
     const initApp = async () => {
@@ -265,7 +279,7 @@ function App() {
         // Load preferences from IndexedDB
         const prefs = await getPreferences();
         setAccentColor(prefs.accentColor);
-        setIsDark(prefs.isDark);
+        setThemeMode(prefs.themeMode);
         
         await loadSongs();
         
@@ -515,8 +529,8 @@ function App() {
       case 'settings':
         return (
           <SettingsView
-            isDark={isDark}
-            onThemeChange={setIsDark}
+            themeMode={themeMode}
+            onThemeModeChange={setThemeMode}
             onFoldersChanged={loadSongs}
             accentColor={accentColor}
             onAccentColorChange={setAccentColor}

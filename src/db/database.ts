@@ -36,10 +36,14 @@ export interface BlogSyncState {
 }
 
 // App preferences (theme, accent color, etc.)
+export type ThemeMode = 'light' | 'dark' | 'system';
+
 export interface AppPreferences {
   id: string; // always 'prefs'
   accentColor: string;
-  isDark: boolean;
+  themeMode: ThemeMode;
+  // Legacy support
+  isDark?: boolean;
 }
 
 // Player state for resume playback
@@ -314,7 +318,14 @@ export async function saveBlogSyncState(state: Omit<BlogSyncState, 'id'>): Promi
 // ============ App Preferences ============
 export async function getPreferences(): Promise<AppPreferences> {
   const prefs = await db.preferences.get('prefs');
-  return prefs || { id: 'prefs', accentColor: 'blue', isDark: false };
+  if (!prefs) {
+    return { id: 'prefs', accentColor: 'blue', themeMode: 'system' };
+  }
+  // Migrate from old isDark to new themeMode
+  if (prefs.themeMode === undefined && prefs.isDark !== undefined) {
+    return { ...prefs, themeMode: prefs.isDark ? 'dark' : 'light' };
+  }
+  return { ...prefs, themeMode: prefs.themeMode || 'system' };
 }
 
 export async function savePreferences(prefs: Omit<AppPreferences, 'id'>): Promise<void> {
