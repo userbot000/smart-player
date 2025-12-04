@@ -11,7 +11,9 @@
 }
 ```
 
-2. צור commit ו-tag:
+2. עדכן את CHANGELOG.md עם השינויים
+
+3. צור commit ו-tag:
 ```bash
 git add .
 git commit -m "Release v1.0.0"
@@ -19,7 +21,10 @@ git tag v1.0.0
 git push origin main --tags
 ```
 
-3. ה-workflow יתחיל אוטומטית ויצור release עם כל הקבצים.
+4. ה-workflow יתחיל אוטומטית:
+   - יבנה Windows (NSIS, MSI, Portable)
+   - יבנה Android (אם מופעל)
+   - ייצור release אוטומטית עם כל הקבצים
 
 ### דרך 2: באמצעות GitHub Actions UI
 
