@@ -31,7 +31,7 @@ import {
 } from '../../utils/blogScraper';
 
 import { filterUrlsByArtist } from '../../utils/artistFilters';
-import { downloadYouTubeAudio, updateYtDlp, YtDownloadProgress } from '../../utils/ytDownloader';
+import { downloadYouTubeAudio, updateYtDlp, YtDownloadProgress, isNetworkAvailable } from '../../utils/ytDownloader';
 import './DownloadManager.css';
 
 interface DownloadManagerProps {
@@ -107,9 +107,20 @@ export function DownloadManager({
   const handleUpdateYtDlp = async () => {
     setYtUpdating(true);
     setYtError(null);
-    setYtProgress({ percent: 0, status: 'checking', message: 'מעדכן yt-dlp...' });
+    setYtProgress({ percent: 0, status: 'checking', message: 'בודק חיבור לרשת...' });
     
     try {
+      // Check network first
+      const hasNetwork = await isNetworkAvailable();
+      if (!hasNetwork) {
+        setYtError('אין חיבור לרשת');
+        setYtProgress(null);
+        setYtUpdating(false);
+        return;
+      }
+
+      setYtProgress({ percent: 0, status: 'checking', message: 'מעדכן yt-dlp...' });
+      
       const success = await updateYtDlp((msg) => {
         setYtProgress({ percent: 50, status: 'checking', message: msg });
       });

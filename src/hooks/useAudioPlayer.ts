@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Howl } from 'howler';
 import { usePlayerStore } from '../store/playerStore';
-import { incrementPlayCount, revokeAudioUrl, createAudioUrlAsync, isAudioCached } from '../db/database';
+import { incrementPlayCount, revokeAudioUrl, createAudioUrlAsync } from '../db/database';
 
 export function useAudioPlayer() {
   const howlRef = useRef<Howl | null>(null);

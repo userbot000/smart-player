@@ -19,29 +19,43 @@ export interface YtDownloadResult {
   error?: string;
 }
 
-// Check if yt-dlp is installed
-export async function isYtDlpInstalled(): Promise<boolean> {
+// Check if network is available
+export async function isNetworkAvailable(): Promise<boolean> {
   try {
     const command = Command.create('powershell', [
       '-NoProfile', '-Command',
-      'yt-dlp --version'
+      'Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet'
     ]);
     const output = await command.execute();
-    return output.code === 0;
+    return output.code === 0 && output.stdout.trim().toLowerCase() === 'true';
   } catch {
     return false;
   }
 }
 
-// Check if ffmpeg is installed
+// Check if yt-dlp is installed (offline check only)
+export async function isYtDlpInstalled(): Promise<boolean> {
+  try {
+    const command = Command.create('powershell', [
+      '-NoProfile', '-Command',
+      'Get-Command yt-dlp -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source'
+    ]);
+    const output = await command.execute();
+    return output.code === 0 && output.stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Check if ffmpeg is installed (offline check only)
 export async function isFfmpegInstalled(): Promise<boolean> {
   try {
     const command = Command.create('powershell', [
       '-NoProfile', '-Command',
-      'ffmpeg -version'
+      'Get-Command ffmpeg -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source'
     ]);
     const output = await command.execute();
-    return output.code === 0;
+    return output.code === 0 && output.stdout.trim().length > 0;
   } catch {
     return false;
   }
@@ -52,7 +66,7 @@ export async function installYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   onProgress?.('מוריד yt-dlp מ-GitHub...');
-  
+
   try {
     // Download yt-dlp.exe directly from GitHub releases to user's local bin folder
     const downloadCmd = Command.create('powershell', [
@@ -82,7 +96,7 @@ export async function updateYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   onProgress?.('מעדכן yt-dlp...');
-  
+
   try {
     // Try yt-dlp self-update first
     const selfUpdate = Command.create('powershell', [
@@ -108,7 +122,7 @@ export async function installFfmpeg(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   onProgress?.('מוריד ffmpeg...');
-  
+
   try {
     // Download ffmpeg essentials build
     const downloadCmd = Command.create('powershell', [
@@ -140,11 +154,22 @@ export async function installFfmpeg(
 // Check and install dependencies
 export async function ensureDependencies(
   onProgress?: (message: string) => void
-): Promise<{ ytDlp: boolean; ffmpeg: boolean }> {
+): Promise<{ ytDlp: boolean; ffmpeg: boolean; networkError?: boolean }> {
   onProgress?.('בודק תלויות...');
-  
+
   let ytDlp = await isYtDlpInstalled();
   let ffmpeg = await isFfmpegInstalled();
+
+  // If dependencies are missing, check network before trying to install
+  if (!ytDlp || !ffmpeg) {
+    onProgress?.('בודק חיבור לרשת...');
+    const hasNetwork = await isNetworkAvailable();
+
+    if (!hasNetwork) {
+      onProgress?.('אין חיבור לרשת - לא ניתן לבדוק/להתקין תלויות');
+      return { ytDlp: false, ffmpeg: false, networkError: true };
+    }
+  }
 
   if (!ytDlp) {
     onProgress?.('yt-dlp לא מותקן, מתקין...');
@@ -169,11 +194,46 @@ function extractVideoId(url: string): string | null {
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
     /^([a-zA-Z0-9_-]{11})$/
   ];
-  
+
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match) return match[1];
   }
+  return null;
+}
+
+// Parse yt-dlp progress output
+function parseYtDlpProgress(line: string): Partial<YtDownloadProgress> | null {
+  // Match download progress: [download]  45.2% of 5.23MiB at 1.23MiB/s ETA 00:03
+  const downloadMatch = line.match(/\[download\]\s+(\d+\.?\d*)%.*?(?:at\s+(\S+))?\s*(?:ETA\s+(\S+))?/);
+  if (downloadMatch) {
+    return {
+      percent: parseFloat(downloadMatch[1]),
+      speed: downloadMatch[2],
+      eta: downloadMatch[3],
+      status: 'downloading',
+      message: `מוריד... ${downloadMatch[1]}%`
+    };
+  }
+
+  // Match extraction/conversion
+  if (line.includes('[ExtractAudio]') || line.includes('[ffmpeg]')) {
+    return {
+      percent: 95,
+      status: 'converting',
+      message: 'ממיר לאודיו...'
+    };
+  }
+
+  // Match metadata/thumbnail embedding
+  if (line.includes('[Metadata]') || line.includes('[EmbedThumbnail]')) {
+    return {
+      percent: 98,
+      status: 'converting',
+      message: 'מוסיף מטאדאטה...'
+    };
+  }
+
   return null;
 }
 
@@ -194,10 +254,17 @@ export async function downloadYouTubeAudio(
     onProgress?.({ percent: 0, status: 'checking', message: msg });
   });
 
+  if (deps.networkError) {
+    return {
+      success: false,
+      error: 'אין חיבור לרשת'
+    };
+  }
+
   if (!deps.ytDlp) {
-    return { 
-      success: false, 
-      error: 'yt-dlp לא מותקן. התקן ידנית: winget install yt-dlp.yt-dlp' 
+    return {
+      success: false,
+      error: 'yt-dlp לא מותקן. התקן ידנית: winget install yt-dlp.yt-dlp'
     };
   }
 
@@ -206,42 +273,88 @@ export async function downloadYouTubeAudio(
     const outputDir = await appDataDir();
     const outputTemplate = `${outputDir}%(title)s.%(ext)s`;
 
-    onProgress?.({ percent: 0, status: 'downloading', message: 'מוריד...' });
+    onProgress?.({ percent: 0, status: 'downloading', message: 'מתחיל הורדה...' });
 
-    // Build yt-dlp command
-    const args = [
-      '-NoProfile', '-Command',
+    // Build yt-dlp command with progress output
+    const ytDlpCmd =
       `yt-dlp "${url}" ` +
-      `--no-check-certificate ` +  // Skip SSL verification
-      `--extract-audio ` +          // Extract audio only
-      `--audio-format mp3 ` +       // Convert to MP3
-      `--audio-quality 0 ` +        // Best quality
-      `--embed-thumbnail ` +        // Embed thumbnail as cover
-      `--add-metadata ` +           // Add metadata
-      `-o "${outputTemplate}" ` +   // Output template
-      `--print filename ` +         // Print output filename
-      `--no-playlist`               // Don't download playlists
-    ];
+      `--no-check-certificate ` +
+      `--newline ` +              // Output progress on new lines (important for parsing)
+      `--extract-audio ` +
+      `--audio-format mp3 ` +
+      `--audio-quality 0 ` +
+      `--embed-thumbnail ` +
+      `--add-metadata ` +
+      `-o "${outputTemplate}" ` +
+      `--print after_move:filepath ` +  // Print final filepath after all processing
+      `--no-playlist`;
 
-    const command = Command.create('powershell', args);
-    const output = await command.execute();
+    const command = Command.create('powershell', ['-NoProfile', '-Command', ytDlpCmd]);
 
-    if (output.code !== 0) {
-      const errorMsg = output.stderr || 'שגיאה לא ידועה';
-      return { success: false, error: errorMsg };
-    }
+    let filePath = '';
+    let lastError = '';
 
-    // Parse output to get filename
-    const lines = output.stdout.trim().split('\n');
-    const filePath = lines[lines.length - 1]?.trim();
+    return new Promise((resolve) => {
+      command.on('close', (data) => {
+        if (data.code === 0 && filePath) {
+          onProgress?.({ percent: 100, status: 'done', message: 'הושלם!' });
+          resolve({
+            success: true,
+            filePath,
+            title: filePath.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '')
+          });
+        } else {
+          resolve({
+            success: false,
+            error: lastError || 'שגיאה בהורדה'
+          });
+        }
+      });
 
-    onProgress?.({ percent: 100, status: 'done', message: 'הושלם!' });
+      command.on('error', (error) => {
+        resolve({
+          success: false,
+          error: error || 'שגיאה בהורדה'
+        });
+      });
 
-    return {
-      success: true,
-      filePath,
-      title: filePath?.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '')
-    };
+      command.stdout.on('data', (line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        // Check if this is the final filepath output
+        if (trimmed.endsWith('.mp3') || trimmed.endsWith('.m4a') || trimmed.endsWith('.opus')) {
+          filePath = trimmed;
+          return;
+        }
+
+        // Parse progress
+        const progress = parseYtDlpProgress(trimmed);
+        if (progress && onProgress) {
+          onProgress({
+            percent: progress.percent ?? 0,
+            speed: progress.speed,
+            eta: progress.eta,
+            status: progress.status ?? 'downloading',
+            message: progress.message
+          });
+        }
+      });
+
+      command.stderr.on('data', (line) => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('WARNING')) {
+          lastError = trimmed;
+        }
+      });
+
+      command.spawn().catch((err) => {
+        resolve({
+          success: false,
+          error: err instanceof Error ? err.message : 'שגיאה בהפעלת yt-dlp'
+        });
+      });
+    });
 
   } catch (error) {
     return {
@@ -268,9 +381,9 @@ export async function getYouTubeInfo(url: string): Promise<{
       '-NoProfile', '-Command',
       `yt-dlp "${url}" --no-check-certificate --dump-json --no-download`
     ]);
-    
+
     const output = await command.execute();
-    
+
     if (output.code !== 0) {
       return { error: output.stderr || 'לא ניתן לקבל מידע' };
     }

@@ -26,6 +26,7 @@ function App() {
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [isDark, setIsDark] = useState(false);
   const [accentColor, setAccentColor] = useState('blue');
+  const [isAppReady, setIsAppReady] = useState(false);
   
   const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue } = usePlayerStore();
 
@@ -188,44 +189,58 @@ function App() {
   }, [accentColor, isDark]);
 
   useEffect(() => {
-    // Load preferences from IndexedDB
-    getPreferences().then(prefs => {
-      setAccentColor(prefs.accentColor);
-      setIsDark(prefs.isDark);
-    });
+    const initApp = async () => {
+      try {
+        // Load preferences from IndexedDB
+        const prefs = await getPreferences();
+        setAccentColor(prefs.accentColor);
+        setIsDark(prefs.isDark);
+        
+        await loadSongs();
+        
+        // Start YouTube channel tracking
+        startChannelTracking((channel, videos) => {
+          console.log(`New videos from ${channel.name}:`, videos);
+        });
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      } finally {
+        setIsAppReady(true);
+      }
+    };
     
-    loadSongs();
-    
-    // Start YouTube channel tracking
-    startChannelTracking((channel, videos) => {
-      console.log(`New videos from ${channel.name}:`, videos);
-      // Could auto-download here if desired
-    });
+    initApp();
     
     return () => {
       stopChannelTracking();
     };
   }, []);
 
-  // Load saved player state on startup
+  // Load saved player state on startup (only after app is ready)
   useEffect(() => {
+    if (!isAppReady) return;
+    
     const loadPlayerState = async () => {
-      const allSongs = await getAllSongs();
-      if (allSongs.length === 0) return;
-      
-      const state = await getPlayerState();
-      if (state.songId) {
-        const song = allSongs.find(s => s.id === state.songId);
-        if (song) {
-          setQueue(allSongs);
-          setSong(song);
-          setProgress(state.progress);
-          setVolume(state.volume);
+      try {
+        const allSongs = await getAllSongs();
+        if (allSongs.length === 0) return;
+        
+        const state = await getPlayerState();
+        if (state.songId) {
+          const song = allSongs.find(s => s.id === state.songId);
+          if (song) {
+            setQueue(allSongs);
+            setSong(song);
+            setProgress(state.progress);
+            setVolume(state.volume);
+          }
         }
+      } catch (error) {
+        console.error('Error loading player state:', error);
       }
     };
     loadPlayerState();
-  }, [setSong, setProgress, setVolume, setQueue]);
+  }, [isAppReady, setSong, setProgress, setVolume, setQueue]);
 
   // Save player state periodically and on close
   useEffect(() => {
@@ -408,6 +423,20 @@ function App() {
         return null;
     }
   };
+
+  // Show loading screen until app is ready
+  if (!isAppReady) {
+    return (
+      <FluentProvider theme={customTheme}>
+        <div className="app app--loading" data-theme={isDark ? 'dark' : 'light'}>
+          <div className="app__loader">
+            <div className="app__loader-spinner" />
+            <span>טוען...</span>
+          </div>
+        </div>
+      </FluentProvider>
+    );
+  }
 
   return (
     <FluentProvider theme={customTheme}>
