@@ -35,6 +35,18 @@ function App() {
   
   const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue, setPlaying } = usePlayerStore();
 
+  // Reload recent songs when current song changes
+  useEffect(() => {
+    if (currentSong) {
+      // Reload recent songs after a short delay to ensure DB is updated
+      const timer = setTimeout(async () => {
+        const recent = await getRecentlyPlayed(10);
+        setRecentSongs(recent);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentSong?.id]);
+
   // Handle files opened from context menu / file association
   const handleExternalFiles = useCallback(async (filePaths: string[]) => {
     if (filePaths.length === 0) return;
