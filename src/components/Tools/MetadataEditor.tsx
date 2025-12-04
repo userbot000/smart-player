@@ -42,6 +42,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
   const [coverImageData, setCoverImageData] = useState<ArrayBuffer | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingSong, setIsLoadingSong] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showError } = useToast();
 
@@ -55,15 +56,44 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         album: initialSong.album || '',
         genre: initialSong.genre || '',
       });
-      setCoverImage(initialSong.coverUrl || null);
-      setCoverImageData(null);
+      
+      // Load cover image and convert to ArrayBuffer if exists
+      if (initialSong.coverUrl) {
+        setCoverImage(initialSong.coverUrl);
+        
+        // Convert data URL to ArrayBuffer for saving
+        try {
+          if (initialSong.coverUrl.startsWith('data:')) {
+            const base64 = initialSong.coverUrl.split(',')[1];
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            setCoverImageData(bytes.buffer);
+          } else {
+            setCoverImageData(null);
+          }
+        } catch (err) {
+          console.error('Failed to convert cover image:', err);
+          setCoverImageData(null);
+        }
+      } else {
+        setCoverImage(null);
+        setCoverImageData(null);
+      }
+      
       setHasChanges(false);
     }
-  }, [initialSong]);
+  }, [initialSong, selectedSong]);
 
-  const handleSongSelect = (songId: string) => {
+  const handleSongSelect = async (songId: string) => {
     const song = songs.find((s) => s.id === songId);
-    if (song) {
+    if (!song) return;
+    
+    setIsLoadingSong(true);
+    
+    try {
       setSelectedSong(song);
       setMetadata({
         title: song.title,
@@ -71,9 +101,39 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         album: song.album || '',
         genre: song.genre || '',
       });
-      setCoverImage(song.coverUrl || null);
-      setCoverImageData(null);
+      
+      // Load cover image and convert to ArrayBuffer if exists
+      if (song.coverUrl) {
+        setCoverImage(song.coverUrl);
+        
+        // Convert data URL to ArrayBuffer for saving
+        try {
+          if (song.coverUrl.startsWith('data:')) {
+            const base64 = song.coverUrl.split(',')[1];
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            setCoverImageData(bytes.buffer);
+          } else {
+            setCoverImageData(null);
+          }
+        } catch (err) {
+          console.error('Failed to convert cover image:', err);
+          setCoverImageData(null);
+        }
+      } else {
+        setCoverImage(null);
+        setCoverImageData(null);
+      }
+      
       setHasChanges(false);
+    } catch (err) {
+      console.error('Error loading song:', err);
+      showError('שגיאה בטעינת השיר');
+    } finally {
+      setIsLoadingSong(false);
     }
   };
 
@@ -268,7 +328,10 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
           <Combobox
             placeholder="חפש שיר מהספרייה..."
-            onOptionSelect={(_, data) => handleSongSelect(data.optionValue || '')}
+            onOptionSelect={(_, data) => {
+              const songId = data.optionValue || '';
+              if (songId) handleSongSelect(songId);
+            }}
             className="metadata-editor__select"
             style={{ flex: 1 }}
           >
@@ -390,11 +453,11 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
               appearance="primary"
               icon={<Save24Regular />}
               onClick={handleExportWithTags}
-              disabled={!selectedSong || isSaving || !hasChanges}
+              disabled={!selectedSong || isSaving || !hasChanges || isLoadingSong}
             >
               {isSaving ? 'שומר...' : 'עדכן תגיות'}
             </Button>
-            <Button appearance="subtle" onClick={handleReset} disabled={!hasChanges || isSaving}>
+            <Button appearance="subtle" onClick={handleReset} disabled={!hasChanges || isSaving || isLoadingSong}>
               בטל שינויים
             </Button>
           </div>

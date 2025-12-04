@@ -43,7 +43,7 @@ async function getFfmpegPath(): Promise<string> {
 // Open bin folder in explorer (for debugging)
 export async function openBinFolder(): Promise<void> {
   if (!isTauriApp()) return;
-  
+
   try {
     const binDir = await getBinDir();
     const command = Command.create('powershell', [
@@ -131,9 +131,9 @@ export async function installYtDlp(
   try {
     const binDir = await getBinDir();
     const ytDlpPath = await getYtDlpPath();
-    
+
     console.log('Installing yt-dlp to:', ytDlpPath);
-    
+
     // Download yt-dlp.exe directly from GitHub releases to bin folder
     const downloadCmd = Command.create('powershell', [
       '-NoProfile',
@@ -202,9 +202,9 @@ export async function installFfmpeg(
   try {
     const binDir = await getBinDir();
     const ffmpegPath = await getFfmpegPath();
-    
+
     console.log('Installing ffmpeg to:', ffmpegPath);
-    
+
     // Download ffmpeg essentials build
     const downloadCmd = Command.create('powershell', [
       '-NoProfile',
@@ -383,7 +383,7 @@ export async function downloadYouTubeAudio(
     const ytDlpPath = await getYtDlpPath();
     const ffmpegPath = await getFfmpegPath();
     const outputDir = await appDataDir();
-    
+
     // Ensure directory ends with separator
     const outputDirFixed = outputDir.endsWith('\\') || outputDir.endsWith('/')
       ? outputDir

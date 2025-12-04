@@ -31,6 +31,7 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
   const [ringtoneTitle, setRingtoneTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [dragging, setDragging] = useState<'start' | 'end' | 'range' | null>(null);
+  const [loadedAudioData, setLoadedAudioData] = useState<ArrayBuffer | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rangeRef = useRef<HTMLDivElement | null>(null);
@@ -58,25 +59,55 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
     }
   }, [selectedSong]);
 
-  // Load audio URL when song changes
+  // Load audio URL and data when song changes
   useEffect(() => {
     if (!selectedSong || !audioRef.current) return;
+
+    let cancelled = false;
 
     const loadAudio = async () => {
       if (!audioRef.current) return;
       
-      // Get audio URL (will load from disk if needed)
+      // Load audio data for ringtone creation
+      let audioData: ArrayBuffer | null = null;
+      
+      if (selectedSong.audioData) {
+        audioData = selectedSong.audioData;
+      } else if (selectedSong.originalPath) {
+        try {
+          const { readAudioFile } = await import('../../db/database');
+          audioData = await readAudioFile(selectedSong.originalPath);
+          
+          if (!audioData) {
+            console.warn('Failed to load audio data for:', selectedSong.originalPath);
+            showError('לא ניתן לטעון את קובץ האודיו. נסה לבחור שיר אחר.');
+          }
+        } catch (err) {
+          console.error('Failed to load audio data:', err);
+          showError('שגיאה בטעינת קובץ האודיו');
+        }
+      }
+      
+      if (!cancelled) {
+        setLoadedAudioData(audioData);
+      }
+      
+      // Get audio URL for playback
       const { createAudioUrlAsync } = await import('../../db/database');
       const url = await createAudioUrlAsync(selectedSong);
       
-      if (url && audioRef.current) {
+      if (url && audioRef.current && !cancelled) {
         audioRef.current.src = url;
         audioRef.current.load();
       }
     };
 
     loadAudio();
-  }, [selectedSong]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSong, showError]);
 
   // Handle audio playback
   useEffect(() => {
@@ -223,32 +254,16 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
       return;
     }
 
+    if (!loadedAudioData) {
+      showError('נתוני האודיו לא נטענו. נסה לבחור שיר אחר.');
+      return;
+    }
+
     setIsCreating(true);
 
     try {
-      // Load audio data if not already loaded
-      let audioData: ArrayBuffer | undefined = selectedSong.audioData;
-      
-      if (!audioData && selectedSong.originalPath) {
-        // Read from disk using Tauri
-        const { readAudioFile } = await import('../../db/database');
-        const loadedData = await readAudioFile(selectedSong.originalPath);
-        
-        if (!loadedData) {
-          showError('לא ניתן לקרוא את קובץ האודיו');
-          return;
-        }
-        
-        audioData = loadedData;
-      }
-      
-      if (!audioData) {
-        showError('לא נמצא קובץ אודיו לשיר זה');
-        return;
-      }
-
       await createRingtone(
-        audioData,
+        loadedAudioData,
         startTime,
         endTime,
         `${ringtoneTitle}.wav`
@@ -345,6 +360,12 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
       {selectedSong && (
         <>
           <audio ref={audioRef} preload="metadata" />
+          
+          {!loadedAudioData && (
+            <div style={{ padding: '12px', background: 'var(--surface-secondary)', borderRadius: '8px', marginBottom: '16px', color: 'var(--text-secondary)' }}>
+              ⚠️ טוען נתוני אודיו... אם זה לוקח זמן רב, נסה לבחור שיר אחר.
+            </div>
+          )}
 
           <div className="ringtone-creator__section">
             <Label>שם הרינגטון</Label>
@@ -431,7 +452,8 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
               appearance="primary"
               icon={<Cut24Regular />}
               onClick={handleCreateRingtone}
-              disabled={clipDuration < 1 || isCreating}
+              disabled={clipDuration < 1 || isCreating || !loadedAudioData}
+              title={!loadedAudioData ? 'נתוני האודיו לא נטענו' : ''}
             >
               {isCreating ? 'יוצר...' : 'צור רינגטון'}
             </Button>
