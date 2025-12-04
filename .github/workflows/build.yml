@@ -49,6 +49,7 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    if: false  # Disabled until Android support is initialized
 
     steps:
       - name: Checkout
@@ -65,25 +66,19 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Install Android targets
         run: |
           rustup target add aarch64-linux-android
           rustup target add armv7-linux-androideabi
-          rustup target add i686-linux-android
-          rustup target add x86_64-linux-android
 
-      - name: Install NDK
+      - name: Setup Android SDK & NDK
         run: |
-          sdkmanager "ndk;26.1.10909125"
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -93,24 +88,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli
-
       - name: Build Android APK
-        run: npm run tauri android build -- --apk
+        run: npm run tauri:android:build -- --apk
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
-      - name: Upload APK (arm64-v8a)
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: smart-player-android-arm64
-          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
-          if-no-files-found: warn
-
-      - name: Upload APK (armeabi-v7a)
-        uses: actions/upload-artifact@v4
-        with:
-          name: smart-player-android-arm
-          path: src-tauri/gen/android/app/build/outputs/apk/armeabi-v7a/release/*.apk
-          if-no-files-found: warn
+          name: smart-player-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
