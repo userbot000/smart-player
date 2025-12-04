@@ -19,10 +19,11 @@ import { createRingtone } from '../../utils/audioProcessor';
 
 interface RingtoneCreatorProps {
   songs: Song[];
+  initialSong?: Song;
 }
 
-export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
+  const [selectedSong, setSelectedSong] = useState<Song | null>(initialSong || null);
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(30);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -39,6 +40,13 @@ export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
 
   const duration = selectedSong?.duration || 100;
   const clipDuration = endTime - startTime;
+
+  // Set initial song if provided
+  useEffect(() => {
+    if (initialSong && !selectedSong) {
+      setSelectedSong(initialSong);
+    }
+  }, [initialSong]);
 
   // Update end time when song changes
   useEffect(() => {

@@ -30,6 +30,8 @@ function App() {
   const [systemDark, setSystemDark] = useState(false);
   const [accentColor, setAccentColor] = useState('blue');
   const [isAppReady, setIsAppReady] = useState(false);
+  const [toolsInitialSong, setToolsInitialSong] = useState<Song | undefined>(undefined);
+  const [toolsInitialTab, setToolsInitialTab] = useState<'ringtone' | 'metadata' | undefined>(undefined);
   
   // Calculate actual dark mode based on themeMode and system preference
   const isDark = themeMode === 'system' ? systemDark : themeMode === 'dark';
@@ -482,10 +484,22 @@ function App() {
 
   const favoriteSongs = songs.filter((s) => s.isFavorite);
 
+  const handleOpenRingtone = (song: Song) => {
+    setToolsInitialSong(song);
+    setToolsInitialTab('ringtone');
+    setCurrentView('tools');
+  };
+
+  const handleOpenMetadata = (song: Song) => {
+    setToolsInitialSong(song);
+    setToolsInitialTab('metadata');
+    setCurrentView('tools');
+  };
+
   const renderView = () => {
     switch (currentView) {
       case 'home':
-        return <HomeView recentSongs={recentSongs} totalSongs={songs.length} onSongsAdded={loadSongs} />;
+        return <HomeView recentSongs={recentSongs} totalSongs={songs.length} onSongsAdded={loadSongs} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
 
       case 'library':
         return (
@@ -494,17 +508,19 @@ function App() {
             onDelete={handleDeleteSong}
             onSongsAdded={loadSongs}
             onToggleFavorite={handleToggleFavorite}
+            onOpenRingtone={handleOpenRingtone}
+            onOpenMetadata={handleOpenMetadata}
           />
         );
 
       case 'albums':
-        return <AlbumsView songs={songs} />;
+        return <AlbumsView songs={songs} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
 
       case 'artists':
-        return <ArtistsView songs={songs} onToggleFavorite={handleToggleFavorite} />;
+        return <ArtistsView songs={songs} onToggleFavorite={handleToggleFavorite} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
 
       case 'playlists':
-        return <PlaylistsView />;
+        return <PlaylistsView onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
 
       case 'downloads':
         return (
@@ -524,6 +540,8 @@ function App() {
             onDelete={handleDeleteSong}
             onSongsAdded={loadSongs}
             onToggleFavorite={handleToggleFavorite}
+            onOpenRingtone={handleOpenRingtone}
+            onOpenMetadata={handleOpenMetadata}
             title="היסטוריה"
             viewType="history"
             showAddButton={false}
@@ -537,6 +555,8 @@ function App() {
             onDelete={handleDeleteSong}
             onSongsAdded={loadSongs}
             onToggleFavorite={handleToggleFavorite}
+            onOpenRingtone={handleOpenRingtone}
+            onOpenMetadata={handleOpenMetadata}
             title="מועדפים"
             viewType="favorites"
             showAddButton={false}
@@ -544,7 +564,7 @@ function App() {
         );
 
       case 'tools':
-        return <ToolsView songs={songs} onSongUpdated={loadSongs} />;
+        return <ToolsView songs={songs} onSongUpdated={loadSongs} initialSong={toolsInitialSong} initialTab={toolsInitialTab} />;
 
       case 'settings':
         return (

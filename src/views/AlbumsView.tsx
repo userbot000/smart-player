@@ -14,9 +14,11 @@ interface Album {
 
 interface AlbumsViewProps {
   songs: Song[];
+  onOpenRingtone?: (song: Song) => void;
+  onOpenMetadata?: (song: Song) => void;
 }
 
-export function AlbumsView({ songs }: AlbumsViewProps) {
+export function AlbumsView({ songs, onOpenRingtone, onOpenMetadata }: AlbumsViewProps) {
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
 
   const albums = useMemo(() => {
@@ -75,7 +77,7 @@ export function AlbumsView({ songs }: AlbumsViewProps) {
             </div>
           </div>
         </div>
-        <SongList songs={selectedAlbum.songs} showSearch={false} />
+        <SongList songs={selectedAlbum.songs} showSearch={false} onOpenRingtone={onOpenRingtone} onOpenMetadata={onOpenMetadata} />
       </div>
     );
   }

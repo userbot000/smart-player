@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Button,
   Input,
@@ -20,6 +20,7 @@ import { updateAndSaveWithTags } from '../../utils/audioProcessor';
 interface MetadataEditorProps {
   songs: Song[];
   onSongUpdated?: () => void;
+  initialSong?: Song;
 }
 
 interface EditableMetadata {
@@ -29,8 +30,8 @@ interface EditableMetadata {
   genre: string;
 }
 
-export function MetadataEditor({ songs }: MetadataEditorProps) {
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
+  const [selectedSong, setSelectedSong] = useState<Song | null>(initialSong || null);
   const [metadata, setMetadata] = useState<EditableMetadata>({
     title: '',
     artist: '',
@@ -43,6 +44,22 @@ export function MetadataEditor({ songs }: MetadataEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showError } = useToast();
+
+  // Set initial song if provided
+  useEffect(() => {
+    if (initialSong && !selectedSong) {
+      setSelectedSong(initialSong);
+      setMetadata({
+        title: initialSong.title,
+        artist: initialSong.artist,
+        album: initialSong.album || '',
+        genre: initialSong.genre || '',
+      });
+      setCoverImage(initialSong.coverUrl || null);
+      setCoverImageData(null);
+      setHasChanges(false);
+    }
+  }, [initialSong]);
 
   const handleSongSelect = (songId: string) => {
     const song = songs.find((s) => s.id === songId);

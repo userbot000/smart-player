@@ -14,9 +14,11 @@ interface Artist {
 interface ArtistsViewProps {
   songs: Song[];
   onToggleFavorite?: (id: string) => void;
+  onOpenRingtone?: (song: Song) => void;
+  onOpenMetadata?: (song: Song) => void;
 }
 
-export function ArtistsView({ songs, onToggleFavorite }: ArtistsViewProps) {
+export function ArtistsView({ songs, onToggleFavorite, onOpenRingtone, onOpenMetadata }: ArtistsViewProps) {
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
   const artists = useMemo(() => {
@@ -62,7 +64,7 @@ export function ArtistsView({ songs, onToggleFavorite }: ArtistsViewProps) {
             </div>
           </div>
         </div>
-        <SongList songs={selectedArtist.songs} onToggleFavorite={onToggleFavorite} showSearch={false} />
+        <SongList songs={selectedArtist.songs} onToggleFavorite={onToggleFavorite} showSearch={false} onOpenRingtone={onOpenRingtone} onOpenMetadata={onOpenMetadata} />
       </div>
     );
   }

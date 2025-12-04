@@ -9,6 +9,8 @@ import {
   Heart24Regular,
   Heart24Filled,
   Add24Regular,
+  Cut24Regular,
+  Tag24Regular,
 } from '@fluentui/react-icons';
 import { Song, Playlist } from '../../types';
 import { usePlayerStore } from '../../store/playerStore';
@@ -21,12 +23,14 @@ interface SongListProps {
   songs: Song[];
   onDelete?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
+  onOpenRingtone?: (song: Song) => void;
+  onOpenMetadata?: (song: Song) => void;
   title?: string;
   showSearch?: boolean;
   showMenu?: boolean;
 }
 
-export function SongList({ songs, onDelete, onToggleFavorite, title, showSearch = true, showMenu = true }: SongListProps) {
+export function SongList({ songs, onDelete, onToggleFavorite, onOpenRingtone, onOpenMetadata, title, showSearch = true, showMenu = true }: SongListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const { currentSong, setSong, setQueue, setQueueIndex, setPlaying } = usePlayerStore();
@@ -181,6 +185,25 @@ export function SongList({ songs, onDelete, onToggleFavorite, title, showSearch 
                           </Menu>
                         </>
                       )}
+                      <MenuDivider />
+                      <MenuItem
+                        icon={<Cut24Regular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenRingtone?.(song);
+                        }}
+                      >
+                        צור רינגטון
+                      </MenuItem>
+                      <MenuItem
+                        icon={<Tag24Regular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenMetadata?.(song);
+                        }}
+                      >
+                        ערוך תגיות
+                      </MenuItem>
                       {onDelete && (
                         <>
                           <MenuDivider />

@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Input, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components';
+import { useState, useMemo, useEffect } from 'react';
+import { Input, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, MenuDivider } from '@fluentui/react-components';
 import {
   Search24Regular,
   Folder24Regular,
@@ -10,6 +10,9 @@ import {
   Delete24Regular,
   Heart24Regular,
   Heart24Filled,
+  Cut24Regular,
+  Tag24Regular,
+  Add24Regular,
 } from '@fluentui/react-icons';
 import { Song } from '../../types';
 import { usePlayerStore } from '../../store/playerStore';
@@ -20,6 +23,8 @@ interface FolderTreeViewProps {
   songs: Song[];
   onDelete?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
+  onOpenRingtone?: (song: Song) => void;
+  onOpenMetadata?: (song: Song) => void;
 }
 
 interface FolderItem {
@@ -28,10 +33,29 @@ interface FolderItem {
   songCount: number;
 }
 
-export function FolderTreeView({ songs, onDelete, onToggleFavorite }: FolderTreeViewProps) {
+export function FolderTreeView({ songs, onDelete, onToggleFavorite, onOpenRingtone, onOpenMetadata }: FolderTreeViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPath, setCurrentPath] = useState<string[]>([]);
+  const [playlists, setPlaylists] = useState<any[]>([]);
   const { currentSong, setSong, setQueue, setQueueIndex, setPlaying } = usePlayerStore();
+
+  useEffect(() => {
+    const loadPlaylists = async () => {
+      const { getAllPlaylists } = await import('../../db/database');
+      const data = await getAllPlaylists();
+      setPlaylists(data);
+    };
+    loadPlaylists();
+  }, []);
+
+  const handleAddToPlaylist = async (songId: string, playlistId: string) => {
+    try {
+      const { addSongToPlaylist } = await import('../../db/database');
+      await addSongToPlaylist(playlistId, songId);
+    } catch (error) {
+      console.error('Error adding song to playlist:', error);
+    }
+  };
 
   // Build folder structure
   const { folders, currentSongs } = useMemo(() => {
@@ -225,16 +249,63 @@ export function FolderTreeView({ songs, onDelete, onToggleFavorite }: FolderTree
                         {song.isFavorite ? 'הסר ממועדפים' : 'הוסף למועדפים'}
                       </MenuItem>
                     )}
+                    {playlists.length > 0 && (
+                      <>
+                        <MenuDivider />
+                        <Menu>
+                          <MenuTrigger disableButtonEnhancement>
+                            <MenuItem icon={<Add24Regular />}>הוסף לרשימת השמעה</MenuItem>
+                          </MenuTrigger>
+                          <MenuPopover>
+                            <MenuList>
+                              {playlists.map((playlist) => (
+                                <MenuItem
+                                  key={playlist.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToPlaylist(song.id, playlist.id);
+                                  }}
+                                >
+                                  {playlist.name}
+                                </MenuItem>
+                              ))}
+                            </MenuList>
+                          </MenuPopover>
+                        </Menu>
+                      </>
+                    )}
+                    <MenuDivider />
+                    <MenuItem
+                      icon={<Cut24Regular />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenRingtone?.(song);
+                      }}
+                    >
+                      צור רינגטון
+                    </MenuItem>
+                    <MenuItem
+                      icon={<Tag24Regular />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenMetadata?.(song);
+                      }}
+                    >
+                      ערוך תגיות
+                    </MenuItem>
                     {onDelete && (
-                      <MenuItem
-                        icon={<Delete24Regular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(song.id);
-                        }}
-                      >
-                        מחק
-                      </MenuItem>
+                      <>
+                        <MenuDivider />
+                        <MenuItem
+                          icon={<Delete24Regular />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(song.id);
+                          }}
+                        >
+                          מחק
+                        </MenuItem>
+                      </>
                     )}
                   </MenuList>
                 </MenuPopover>

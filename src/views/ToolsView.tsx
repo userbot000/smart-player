@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Tab,
   TabList,
@@ -13,12 +13,20 @@ import { Song } from '../types';
 interface ToolsViewProps {
   songs: Song[];
   onSongUpdated: () => void;
+  initialSong?: Song;
+  initialTab?: 'ringtone' | 'metadata';
 }
 
 type ToolTab = 'ringtone' | 'metadata';
 
-export function ToolsView({ songs, onSongUpdated }: ToolsViewProps) {
-  const [selectedTab, setSelectedTab] = useState<ToolTab>('ringtone');
+export function ToolsView({ songs, onSongUpdated, initialSong, initialTab }: ToolsViewProps) {
+  const [selectedTab, setSelectedTab] = useState<ToolTab>(initialTab || 'ringtone');
+
+  useEffect(() => {
+    if (initialTab) {
+      setSelectedTab(initialTab);
+    }
+  }, [initialTab]);
 
   const handleTabSelect = (_: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as ToolTab);
@@ -40,8 +48,8 @@ export function ToolsView({ songs, onSongUpdated }: ToolsViewProps) {
       </TabList>
 
       <div className="tools-view__content">
-        {selectedTab === 'ringtone' && <RingtoneCreator songs={songs} />}
-        {selectedTab === 'metadata' && <MetadataEditor songs={songs} onSongUpdated={onSongUpdated} />}
+        {selectedTab === 'ringtone' && <RingtoneCreator songs={songs} initialSong={initialSong} />}
+        {selectedTab === 'metadata' && <MetadataEditor songs={songs} onSongUpdated={onSongUpdated} initialSong={initialSong} />}
       </div>
 
       <style>{`

@@ -6,9 +6,11 @@ interface HomeViewProps {
   recentSongs: Song[];
   totalSongs: number;
   onSongsAdded: () => void;
+  onOpenRingtone?: (song: Song) => void;
+  onOpenMetadata?: (song: Song) => void;
 }
 
-export function HomeView({ recentSongs, totalSongs, onSongsAdded }: HomeViewProps) {
+export function HomeView({ recentSongs, totalSongs, onSongsAdded, onOpenRingtone, onOpenMetadata }: HomeViewProps) {
   return (
     <div className="view home-view">
       <header className="home-view__header">
@@ -33,6 +35,8 @@ export function HomeView({ recentSongs, totalSongs, onSongsAdded }: HomeViewProp
               songs={recentSongs}
               title="הושמעו לאחרונה"
               showSearch={false}
+              onOpenRingtone={onOpenRingtone}
+              onOpenMetadata={onOpenMetadata}
             />
           )}
         </>

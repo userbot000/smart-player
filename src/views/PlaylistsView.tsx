@@ -6,7 +6,12 @@ import { getAllPlaylists, createPlaylist, deletePlaylist, getPlaylistSongs } fro
 import { SongList } from '../components';
 import { useToast } from '../components/Toast/ToastProvider';
 
-export function PlaylistsView() {
+interface PlaylistsViewProps {
+  onOpenRingtone?: (song: Song) => void;
+  onOpenMetadata?: (song: Song) => void;
+}
+
+export function PlaylistsView({ onOpenRingtone, onOpenMetadata }: PlaylistsViewProps = {}) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
@@ -94,7 +99,7 @@ export function PlaylistsView() {
             <p className="empty-state__text">הוסף שירים מהספרייה</p>
           </div>
         ) : (
-          <SongList songs={playlistSongs} showSearch={false} />
+          <SongList songs={playlistSongs} showSearch={false} onOpenRingtone={onOpenRingtone} onOpenMetadata={onOpenMetadata} />
         )}
       </div>
     );

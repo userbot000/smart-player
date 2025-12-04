@@ -8,6 +8,8 @@ interface LibraryViewProps {
   onDelete: (id: string) => void;
   onSongsAdded: () => void;
   onToggleFavorite: (id: string) => void;
+  onOpenRingtone?: (song: Song) => void;
+  onOpenMetadata?: (song: Song) => void;
   title?: string;
   viewType?: 'library' | 'history' | 'favorites';
   showAddButton?: boolean;
@@ -18,6 +20,8 @@ export function LibraryView({
   onDelete,
   onSongsAdded,
   onToggleFavorite,
+  onOpenRingtone,
+  onOpenMetadata,
   title = 'הספרייה שלי',
   viewType = 'library',
   showAddButton = true,
@@ -79,9 +83,9 @@ export function LibraryView({
             </div>
           )}
           {viewMode === 'folders' && hasFolders ? (
-            <FolderTreeView songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} />
+            <FolderTreeView songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} onOpenRingtone={onOpenRingtone} onOpenMetadata={onOpenMetadata} />
           ) : (
-            <SongList songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} showSearch={true} />
+            <SongList songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} onOpenRingtone={onOpenRingtone} onOpenMetadata={onOpenMetadata} showSearch={true} />
           )}
         </>
       )}
