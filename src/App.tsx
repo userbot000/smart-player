@@ -107,10 +107,14 @@ function App() {
     }
     
     if (newSongs.length > 0) {
-      // Set queue and play first song
+      // Set queue and song first
       setQueue(newSongs);
       setSong(newSongs[0]);
-      setPlaying(true);
+      
+      // Wait a bit for the player to initialize, then start playing
+      setTimeout(() => {
+        setPlaying(true);
+      }, 100);
       
       // Reload songs list
       loadSongs();
