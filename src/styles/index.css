@@ -277,39 +277,36 @@
 /* Fix Fluent UI Dialog RTL */
 .fui-DialogSurface {
   direction: rtl !important;
-  text-align: right !important;
 }
 
 .fui-DialogTitle {
   text-align: right !important;
+  direction: rtl !important;
 }
 
 .fui-DialogContent {
   text-align: right !important;
+  direction: rtl !important;
 }
 
+.fui-DialogBody {
+  direction: rtl !important;
+}
+
+/* Fix button order - buttons should be on LEFT in RTL */
 .fui-DialogActions {
-  flex-direction: row-reverse !important;
-  justify-content: flex-start !important;
-  gap: var(--space-sm) !important;
+  direction: rtl !important;
+  justify-content: flex-end !important;
 }
 
-/* Fix button order in dialog - primary button should be on the right */
-.fui-DialogActions > button:first-child {
-  margin-left: 0 !important;
-}
-
-.fui-DialogActions > button:last-child {
-  margin-right: 0 !important;
-}
-
-/* Fix Input in Dialog */
+/* Fix Input in Dialog - text should be on RIGHT */
 .fui-DialogContent .fui-Input {
-  text-align: right !important;
+  direction: rtl !important;
 }
 
 .fui-DialogContent .fui-Input input {
   text-align: right !important;
+  direction: rtl !important;
 }
 
 /* Fix Dialog backdrop */

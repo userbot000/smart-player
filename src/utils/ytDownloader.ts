@@ -449,11 +449,20 @@ export async function downloadYouTubeAudio(
     console.log('  URL:', url);
     console.log('  Output:', outputTemplate);
 
-    const command = Command.create('powershell', [
-      '-NoProfile',
-      '-ExecutionPolicy', 'Bypass',
-      '-Command',
-      `& "${ytDlpPath}" "${url}" --ffmpeg-location "${binDir}" --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "${outputTemplate}" --print after_move:filepath --no-playlist`
+    // Run yt-dlp.exe directly - no PowerShell wrapper!
+    const command = Command.create(ytDlpPath, [
+      url,
+      '--ffmpeg-location', binDir,
+      '--no-check-certificate',
+      '--newline',
+      '--extract-audio',
+      '--audio-format', 'mp3',
+      '--audio-quality', '0',
+      '--embed-thumbnail',
+      '--add-metadata',
+      '-o', outputTemplate,
+      '--print', 'after_move:filepath',
+      '--no-playlist'
     ]);
 
     let filePath = '';
