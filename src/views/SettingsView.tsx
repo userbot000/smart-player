@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Label, Button, Text, Input, Spinner, RadioGroup, Radio, Switch } from '@fluentui/react-components';
-import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular } from '@fluentui/react-icons';
+import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';
 import { getArtistFiltersAsync, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
-import { ThemeMode } from '../db/database';
+import { ThemeMode, getDownloadFolder, setDownloadFolder } from '../db/database';
 import {
   getTrackedChannels,
   getTrackedChannelsAsync,
@@ -43,10 +43,14 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
   const [addingChannel, setAddingChannel] = useState(false);
   const [channelError, setChannelError] = useState<string | null>(null);
 
+  // Download folder
+  const [downloadFolderPath, setDownloadFolderPath] = useState<string>('');
+
   useEffect(() => {
     loadFolders();
     getArtistFiltersAsync().then(setFilters);
     getTrackedChannelsAsync().then(setTrackedChannels);
+    getDownloadFolder().then(folder => setDownloadFolderPath(folder || ''));
   }, []);
 
   const loadFolders = async () => {
@@ -122,6 +126,28 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
   const handleRemoveChannel = (channelId: string) => {
     removeTrackedChannel(channelId);
     setTrackedChannels(getTrackedChannels());
+  };
+
+  const handleSelectDownloadFolder = async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: 'בחר תיקיית הורדות',
+      });
+      if (selected && typeof selected === 'string') {
+        setDownloadFolderPath(selected);
+        await setDownloadFolder(selected);
+      }
+    } catch (err) {
+      console.error('Failed to select folder:', err);
+    }
+  };
+
+  const handleResetDownloadFolder = async () => {
+    setDownloadFolderPath('');
+    await setDownloadFolder(undefined);
   };
 
   return (
@@ -216,6 +242,38 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
         <div className="settings-item">
           <Label htmlFor="smart-queue">תור חכם (המלצות אוטומטיות)</Label>
           <Switch id="smart-queue" defaultChecked />
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <h3 className="settings-section__title">תיקיית הורדות</h3>
+        <p className="settings-section__desc">
+          בחר תיקייה לשמירת קבצים שהורדו מיוטיוב
+        </p>
+        <div className="settings-download-folder">
+          <div className="settings-download-folder__path">
+            <FolderOpen24Regular className="settings-download-folder__icon" />
+            <Text className="settings-download-folder__text">
+              {downloadFolderPath || 'תיקיית הורדות ברירת מחדל'}
+            </Text>
+          </div>
+          <div className="settings-download-folder__actions">
+            <Button
+              appearance="outline"
+              icon={<Folder24Regular />}
+              onClick={handleSelectDownloadFolder}
+            >
+              בחר תיקייה
+            </Button>
+            {downloadFolderPath && (
+              <Button
+                appearance="subtle"
+                icon={<Delete24Regular />}
+                onClick={handleResetDownloadFolder}
+                title="אפס לברירת מחדל"
+              />
+            )}
+          </div>
         </div>
       </section>
 
@@ -539,6 +597,38 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
           color: var(--color-error);
           font-size: var(--font-size-sm);
           margin: var(--space-sm) 0;
+        }
+        .settings-download-folder {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: var(--space-md);
+          background: var(--surface-hover);
+          border-radius: var(--radius-md);
+          gap: var(--space-md);
+        }
+        .settings-download-folder__path {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+          flex: 1;
+          min-width: 0;
+        }
+        .settings-download-folder__icon {
+          flex-shrink: 0;
+          color: var(--color-primary);
+        }
+        .settings-download-folder__text {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: var(--text-secondary);
+        }
+        .settings-download-folder__actions {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xs);
+          flex-shrink: 0;
         }
       `}</style>
     </div>

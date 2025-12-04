@@ -7,6 +7,7 @@ interface DownloadsViewProps {
   onCancelDownload: (id: string) => void;
   onRemoveDownload: (id: string) => void;
   onBatchDownload: (urls: string[]) => void;
+  onSongsAdded?: () => void;
 }
 
 export function DownloadsView({
@@ -15,6 +16,7 @@ export function DownloadsView({
   onCancelDownload,
   onRemoveDownload,
   onBatchDownload,
+  onSongsAdded,
 }: DownloadsViewProps) {
   return (
     <div className="view downloads-view">
@@ -29,6 +31,7 @@ export function DownloadsView({
         onCancelDownload={onCancelDownload}
         onRemoveDownload={onRemoveDownload}
         onBatchDownload={onBatchDownload}
+        onSongsAdded={onSongsAdded}
       />
     </div>
   );

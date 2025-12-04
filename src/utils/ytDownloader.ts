@@ -2,8 +2,9 @@
 // Requires yt-dlp and ffmpeg to be installed
 
 import { Command } from '@tauri-apps/plugin-shell';
-import { appDataDir } from '@tauri-apps/api/path';
+import { appDataDir, downloadDir } from '@tauri-apps/api/path';
 import { isTauriApp } from './tauriDetect';
+import { getDownloadFolder } from '../db/database';
 
 export interface YtDownloadProgress {
   percent: number;
@@ -373,7 +374,10 @@ export async function downloadYouTubeAudio(
     // Get paths
     const ytDlpPath = await getYtDlpPath();
     const ffmpegPath = await getFfmpegPath();
-    const outputDir = await appDataDir();
+    
+    // Use custom download folder if set, otherwise use system Downloads folder
+    const customFolder = await getDownloadFolder();
+    const outputDir = customFolder || await downloadDir();
 
     // Verify files exist
     const ytDlpExists = await isYtDlpInstalled();

@@ -42,6 +42,7 @@ export interface AppPreferences {
   id: string; // always 'prefs'
   accentColor: string;
   themeMode: ThemeMode;
+  downloadFolder?: string; // Custom download folder path
   // Legacy support
   isDark?: boolean;
 }
@@ -342,6 +343,16 @@ export async function getPreferences(): Promise<AppPreferences> {
     return { ...prefs, themeMode: prefs.isDark ? 'dark' : 'light' };
   }
   return { ...prefs, themeMode: prefs.themeMode || 'system' };
+}
+
+export async function getDownloadFolder(): Promise<string | undefined> {
+  const prefs = await getPreferences();
+  return prefs.downloadFolder;
+}
+
+export async function setDownloadFolder(folder: string | undefined): Promise<void> {
+  const prefs = await getPreferences();
+  await savePreferences({ ...prefs, downloadFolder: folder });
 }
 
 export async function savePreferences(prefs: Omit<AppPreferences, 'id'>): Promise<void> {

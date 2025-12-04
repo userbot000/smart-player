@@ -530,6 +530,7 @@ function App() {
             onCancelDownload={handleCancelDownload}
             onRemoveDownload={handleRemoveDownload}
             onBatchDownload={handleBatchDownload}
+            onSongsAdded={loadSongs}
           />
         );
 

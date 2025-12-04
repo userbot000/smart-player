@@ -40,6 +40,7 @@ interface DownloadManagerProps {
   onCancelDownload: (id: string) => void;
   onRemoveDownload: (id: string) => void;
   onBatchDownload: (urls: string[]) => void;
+  onSongsAdded?: () => void;
 }
 
 export function DownloadManager({
@@ -48,6 +49,7 @@ export function DownloadManager({
   onCancelDownload,
   onRemoveDownload,
   onBatchDownload,
+  onSongsAdded,
 }: DownloadManagerProps) {
   const [url, setUrl] = useState('');
   const [isChecking, setIsChecking] = useState(false);
@@ -126,6 +128,9 @@ export function DownloadManager({
           await addSong(song);
           
           setYtProgress({ percent: 100, status: 'done', message: `הורד והתווסף לספרייה: ${song.title}` });
+          
+          // Refresh library to show the new song
+          onSongsAdded?.();
         } catch (addErr) {
           console.error('Failed to add to library:', addErr);
           setYtProgress({ percent: 100, status: 'done', message: `הורד: ${result.title} (לא התווסף לספרייה)` });
