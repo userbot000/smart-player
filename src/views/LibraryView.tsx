@@ -75,13 +75,6 @@ export function LibraryView({
         </div>
       ) : (
         <>
-          {!hasFolders && songs.length > 0 && viewType === 'library' && (
-            <div style={{ padding: '12px', background: 'var(--surface-secondary)', borderRadius: '8px', marginBottom: '16px' }}>
-              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-                💡 לא נמצאו תתי-תיקיות. אם יש לך שירים בתתי-תיקיות, סרוק מחדש את התיקייה מההגדרות כדי לראות את תצוגת התיקיות.
-              </p>
-            </div>
-          )}
           {viewMode === 'folders' && hasFolders ? (
             <FolderTreeView songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} onOpenRingtone={onOpenRingtone} onOpenMetadata={onOpenMetadata} />
           ) : (
