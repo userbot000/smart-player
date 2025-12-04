@@ -11,6 +11,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   get-version:
     runs-on: ubuntu-latest
@@ -59,23 +62,65 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: List built files
+        run: |
+          echo "📦 Listing built files..."
+          echo "NSIS installers:"
+          ls -la src-tauri/target/release/bundle/nsis/ || echo "No NSIS files"
+          echo ""
+          echo "MSI installers:"
+          ls -la src-tauri/target/release/bundle/msi/ || echo "No MSI files"
+          echo ""
+          echo "Portable EXE:"
+          ls -la src-tauri/target/release/*.exe || echo "No EXE files"
+
+      - name: Prepare release files
+        id: prepare_files
+        run: |
+          mkdir -p release-files
+          
+          # Copy NSIS installer
+          if ls src-tauri/target/release/bundle/nsis/*.exe 1> /dev/null 2>&1; then
+            cp src-tauri/target/release/bundle/nsis/*.exe release-files/ || true
+            echo "nsis_found=true" >> $GITHUB_OUTPUT
+          else
+            echo "nsis_found=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Copy MSI installer
+          if ls src-tauri/target/release/bundle/msi/*.msi 1> /dev/null 2>&1; then
+            cp src-tauri/target/release/bundle/msi/*.msi release-files/ || true
+            echo "msi_found=true" >> $GITHUB_OUTPUT
+          else
+            echo "msi_found=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Copy portable EXE
+          if [ -f "src-tauri/target/release/smart-player.exe" ]; then
+            cp src-tauri/target/release/smart-player.exe release-files/Smart-Player-Portable.exe || true
+            echo "exe_found=true" >> $GITHUB_OUTPUT
+          else
+            echo "exe_found=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Files prepared:"
+          ls -lh release-files/
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.get-version.outputs.version }}
           name: Smart Player ${{ needs.get-version.outputs.version }}
           body: |
-            ## Smart Player ${{ needs.get-version.outputs.version }}
+            ## 🎵 Smart Player ${{ needs.get-version.outputs.version }}
             
             ### 📥 הורדות Windows
-            - **NSIS Installer** (מומלץ) - התקנה מלאה עם file associations
-            - **MSI Installer** - חלופה למערכות ארגוניות
-            - **Portable EXE** - גרסה ניידת ללא התקנה
+            ${{ steps.prepare_files.outputs.nsis_found == 'true' && '- ✅ **NSIS Installer** (מומלץ) - התקנה מלאה עם file associations' || '' }}
+            ${{ steps.prepare_files.outputs.msi_found == 'true' && '- ✅ **MSI Installer** - חלופה למערכות ארגוניות' || '' }}
+            ${{ steps.prepare_files.outputs.exe_found == 'true' && '- ✅ **Portable EXE** - גרסה ניידת ללא התקנה' || '' }}
             
             ### 📱 הורדות Android
-            - **ARM64 APK** - למכשירים מודרניים (64-bit) - מומלץ
-            - **ARMv7 APK** - למכשירים ישנים (32-bit)
-            - **Universal APK** - עובד על כל המכשירים (גדול יותר)
+            - ⏳ Android APKs יתווספו בקרוב (אם Android מופעל)
             
             ### 📝 שינויים
             ראה [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
@@ -85,10 +130,7 @@ jobs:
             Made with ❤️ in Israel
           draft: false
           prerelease: false
-          files: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/smart-player.exe
+          files: release-files/*
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
