@@ -335,24 +335,12 @@ export async function downloadYouTubeAudio(
     // Build yt-dlp command with progress output
     onProgress?.({ percent: 5, status: 'downloading', message: 'מפעיל yt-dlp...' });
 
-    // Simple approach: just call yt-dlp with cmd.exe
-    const args = [
-      '/c',
-      'yt-dlp',
-      url,
-      '--no-check-certificate',
-      '--newline',
-      '--extract-audio',
-      '--audio-format', 'mp3',
-      '--audio-quality', '0',
-      '--embed-thumbnail',
-      '--add-metadata',
-      '-o', outputTemplate,
-      '--print', 'after_move:filepath',
-      '--no-playlist'
-    ];
-
-    const command = Command.create('cmd', args);
+    // Use PowerShell one-liner to run yt-dlp from its known location
+    const command = Command.create('powershell', [
+      '-NoProfile',
+      '-Command',
+      `& "$env:LOCALAPPDATA\\yt-dlp\\yt-dlp.exe" "${url}" --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "${outputTemplate}" --print after_move:filepath --no-playlist`
+    ]);
 
     let filePath = '';
     let lastError = '';
