@@ -121,7 +121,7 @@ export function PlayerControls() {
             />
           </Tooltip>
 
-          <Button appearance="subtle" icon={<Previous24Filled />} onClick={prevSong} />
+          <Button appearance="subtle" icon={<Previous24Filled />} onClick={nextSong} />
 
           <Button
             appearance="primary"
@@ -130,7 +130,7 @@ export function PlayerControls() {
             className="player__play-btn"
           />
 
-          <Button appearance="subtle" icon={<Next24Filled />} onClick={nextSong} />
+          <Button appearance="subtle" icon={<Next24Filled />} onClick={prevSong} />
 
           <Tooltip content={`חזרה: ${repeat === 'none' ? 'כבוי' : repeat === 'one' ? 'שיר' : 'הכל'}`} relationship="label">
             <Button
@@ -177,7 +177,7 @@ export function PlayerControls() {
         )}
 
         <div className="player__progress">
-          <span className="player__time">{formatTime(progress)}</span>
+          <span className="player__time">{formatTime(duration)}</span>
           <Slider
             min={0}
             max={duration || 100}
@@ -185,7 +185,7 @@ export function PlayerControls() {
             onChange={handleProgressChange}
             className="player__slider"
           />
-          <span className="player__time">{formatTime(duration)}</span>
+          <span className="player__time">{formatTime(progress)}</span>
         </div>
       </div>
 
