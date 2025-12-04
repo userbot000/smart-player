@@ -4,6 +4,7 @@ import { Song, PlayerState } from '../types';
 interface PlayerStore extends PlayerState {
   // Error state
   error: string | null;
+  playbackRate: number;
   // Actions
   setSong: (song: Song) => void;
   setQueue: (songs: Song[]) => void;
@@ -16,6 +17,7 @@ interface PlayerStore extends PlayerState {
   setProgress: (progress: number) => void;
   setDuration: (duration: number) => void;
   setError: (error: string | null) => void;
+  setPlaybackRate: (rate: number) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   toggleSmartQueue: () => void;
@@ -36,6 +38,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   shuffle: false,
   repeat: 'none',
   smartQueue: true,
+  playbackRate: 1,
   error: null,
 
   // Actions
@@ -67,6 +70,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   setDuration: (duration) => set({ duration }),
   
   setError: (error) => set({ error }),
+  
+  setPlaybackRate: (rate) => set({ playbackRate: Math.max(0.25, Math.min(2, rate)) }),
   
   toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
   

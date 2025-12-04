@@ -106,14 +106,30 @@ export function FolderTreeView({ songs, onDelete, onToggleFavorite, onOpenRingto
     return { folders: foldersList, currentSongs: songsInFolder };
   }, [songs, currentPath]);
 
-  // Filter songs by search
-  const filteredSongs = useMemo(() => {
-    if (!searchQuery) return currentSongs;
+  // Filter songs and folders by search
+  const { filteredSongs, filteredFolders } = useMemo(() => {
+    if (!searchQuery) {
+      return { filteredSongs: currentSongs, filteredFolders: folders };
+    }
+    
     const query = searchQuery.toLowerCase();
-    return currentSongs.filter(
-      (song) => song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query)
+    
+    // Search in all songs (not just current folder)
+    const matchingSongs = songs.filter(
+      (song) => 
+        song.title.toLowerCase().includes(query) || 
+        song.artist.toLowerCase().includes(query) ||
+        (song.album && song.album.toLowerCase().includes(query)) ||
+        (song.subFolder && song.subFolder.toLowerCase().includes(query))
     );
-  }, [currentSongs, searchQuery]);
+    
+    // Search in folder names
+    const matchingFolders = folders.filter(
+      (folder) => folder.name.toLowerCase().includes(query)
+    );
+    
+    return { filteredSongs: matchingSongs, filteredFolders: matchingFolders };
+  }, [currentSongs, folders, songs, searchQuery]);
 
   const handleFolderClick = (folderPath: string) => {
     const newPath = folderPath.split('/');
@@ -177,7 +193,7 @@ export function FolderTreeView({ songs, onDelete, onToggleFavorite, onOpenRingto
 
       <div className="folder-tree__content">
         {/* Show folders */}
-        {!searchQuery && folders.map((folder) => (
+        {filteredFolders.map((folder) => (
           <div
             key={folder.path}
             className="song-item song-item--folder"
@@ -198,10 +214,10 @@ export function FolderTreeView({ songs, onDelete, onToggleFavorite, onOpenRingto
         ))}
 
         {/* Show songs */}
-        {filteredSongs.length === 0 && folders.length === 0 ? (
+        {filteredSongs.length === 0 && filteredFolders.length === 0 ? (
           <div className="folder-tree__empty">
             <MusicNote224Regular />
-            <p>אין שירים בתיקייה זו</p>
+            <p>{searchQuery ? 'לא נמצאו תוצאות' : 'אין שירים בתיקייה זו'}</p>
           </div>
         ) : (
           filteredSongs.map((song, index) => (

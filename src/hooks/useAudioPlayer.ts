@@ -12,6 +12,7 @@ export function useAudioPlayer() {
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const volume = usePlayerStore((state) => state.volume);
+  const playbackRate = usePlayerStore((state) => state.playbackRate);
   const setPlaying = usePlayerStore((state) => state.setPlaying);
   const setProgress = usePlayerStore((state) => state.setProgress);
   const setDuration = usePlayerStore((state) => state.setDuration);
@@ -163,6 +164,13 @@ export function useAudioPlayer() {
       howlRef.current.volume(volume);
     }
   }, [volume]);
+
+  // Handle playback rate changes
+  useEffect(() => {
+    if (howlRef.current) {
+      howlRef.current.rate(playbackRate);
+    }
+  }, [playbackRate]);
 
   // Seek function - now checks if audio is ready
   const seek = useCallback(

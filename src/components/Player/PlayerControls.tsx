@@ -10,8 +10,9 @@ import {
   Bookmark24Regular,
   Bookmark24Filled,
   Delete24Regular,
+  TopSpeed24Regular,
 } from '@fluentui/react-icons';
-import { Slider, Tooltip, Button, MessageBar, MessageBarBody } from '@fluentui/react-components';
+import { Slider, Tooltip, Button, MessageBar, MessageBarBody, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components';
 import { usePlayerStore } from '../../store/playerStore';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { formatTime } from '../../utils/formatTime';
@@ -21,9 +22,9 @@ import './PlayerControls.css';
 export function PlayerControls() {
   const {
     currentSong, isPlaying, volume, progress, duration,
-    shuffle, repeat, smartQueue, error,
+    shuffle, repeat, smartQueue, error, playbackRate,
     togglePlay, setVolume, toggleShuffle, cycleRepeat, toggleSmartQueue,
-    nextSong, prevSong, setError
+    nextSong, prevSong, setError, setPlaybackRate
   } = usePlayerStore();
 
   const { seek, isReady } = useAudioPlayer();
@@ -150,6 +151,29 @@ export function PlayerControls() {
               className={bookmarks.length > 0 ? 'active' : ''}
             />
           </Tooltip>
+
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Tooltip content={`מהירות: ${playbackRate}x`} relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<TopSpeed24Regular />}
+                  className={playbackRate !== 1 ? 'active' : ''}
+                />
+              </Tooltip>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem onClick={() => setPlaybackRate(0.5)}>0.5x איטי</MenuItem>
+                <MenuItem onClick={() => setPlaybackRate(0.75)}>0.75x</MenuItem>
+                <MenuItem onClick={() => setPlaybackRate(1)}>1x רגיל</MenuItem>
+                <MenuItem onClick={() => setPlaybackRate(1.25)}>1.25x</MenuItem>
+                <MenuItem onClick={() => setPlaybackRate(1.5)}>1.5x מהיר</MenuItem>
+                <MenuItem onClick={() => setPlaybackRate(1.75)}>1.75x</MenuItem>
+                <MenuItem onClick={() => setPlaybackRate(2)}>2x מהיר מאוד</MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
         </div>
 
         {showBookmarks && bookmarks.length > 0 && (
