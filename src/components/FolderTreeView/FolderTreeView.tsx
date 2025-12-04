@@ -1,231 +1,242 @@
-import { useState, useMemo, ReactElement } from 'react';
-import { Input, Button } from '@fluentui/react-components';
+import { useState, useMemo } from 'react';
+import { Input, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components';
 import {
-    Search24Regular,
-    Folder24Regular,
-    FolderOpen24Regular,
-    ChevronRight24Regular,
-    ChevronDown24Regular,
+  Search24Regular,
+  Folder24Regular,
+  ArrowLeft24Regular,
+  MusicNote224Regular,
+  Play24Filled,
+  MoreVertical24Regular,
+  Delete24Regular,
+  Heart24Regular,
+  Heart24Filled,
 } from '@fluentui/react-icons';
 import { Song } from '../../types';
-import { SongList } from '../SongList/SongList';
+import { usePlayerStore } from '../../store/playerStore';
+import { formatTime } from '../../utils/formatTime';
 import './FolderTreeView.css';
 
 interface FolderTreeViewProps {
-    songs: Song[];
-    onDelete?: (id: string) => void;
-    onToggleFavorite?: (id: string) => void;
+  songs: Song[];
+  onDelete?: (id: string) => void;
+  onToggleFavorite?: (id: string) => void;
 }
 
-interface FolderNode {
-    name: string;
-    path: string;
-    songs: Song[];
-    subFolders: Map<string, FolderNode>;
+interface FolderItem {
+  name: string;
+  path: string;
+  songCount: number;
 }
 
 export function FolderTreeView({ songs, onDelete, onToggleFavorite }: FolderTreeViewProps) {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPath, setCurrentPath] = useState<string[]>([]);
+  const { currentSong, setSong, setQueue, setQueueIndex, setPlaying } = usePlayerStore();
 
-    // Build folder tree structure
-    const folderTree = useMemo(() => {
-        const root: FolderNode = {
-            name: 'root',
-            path: '',
-            songs: [],
-            subFolders: new Map(),
-        };
+  // Build folder structure
+  const { folders, currentSongs } = useMemo(() => {
+    const pathStr = currentPath.join('/');
+    
+    // Get all items in current folder
+    const foldersMap = new Map<string, number>();
+    const songsInFolder: Song[] = [];
 
-        songs.forEach((song) => {
-            if (!song.subFolder) {
-                // Song in root folder
-                root.songs.push(song);
-            } else {
-                // Song in subfolder
-                const parts = song.subFolder.split(/[/\\]/);
-                let currentNode = root;
-
-                parts.forEach((part, index) => {
-                    const path = parts.slice(0, index + 1).join('/');
-
-                    if (!currentNode.subFolders.has(part)) {
-                        currentNode.subFolders.set(part, {
-                            name: part,
-                            path,
-                            songs: [],
-                            subFolders: new Map(),
-                        });
-                    }
-
-                    currentNode = currentNode.subFolders.get(part)!;
-                });
-
-                currentNode.songs.push(song);
-            }
-        });
-
-        return root;
-    }, [songs]);
-
-    // Filter songs by search query
-    const filteredSongs = useMemo(() => {
-        if (!searchQuery) return songs;
-        const query = searchQuery.toLowerCase();
-        return songs.filter(
-            (song) => song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query)
-        );
-    }, [songs, searchQuery]);
-
-    const toggleFolder = (path: string) => {
-        setExpandedFolders((prev) => {
-            const next = new Set(prev);
-            if (next.has(path)) {
-                next.delete(path);
-            } else {
-                next.add(path);
-            }
-            return next;
-        });
-    };
-
-    const expandAll = () => {
-        const allPaths = new Set<string>();
-        const collectPaths = (node: FolderNode) => {
-            node.subFolders.forEach((subNode) => {
-                allPaths.add(subNode.path);
-                collectPaths(subNode);
-            });
-        };
-        collectPaths(folderTree);
-        setExpandedFolders(allPaths);
-    };
-
-    const collapseAll = () => {
-        setExpandedFolders(new Set());
-    };
-
-    const renderFolderNode = (node: FolderNode, level: number = 0): ReactElement[] => {
-        const elements: ReactElement[] = [];
-        const isExpanded = expandedFolders.has(node.path);
-
-        // Render current folder (skip root)
-        if (node.path) {
-            const hasSubFolders = node.subFolders.size > 0;
-
-            elements.push(
-                <div
-                    key={node.path}
-                    className="folder-tree__folder"
-                    style={{ paddingRight: `${level * 24}px` }}
-                    onClick={() => hasSubFolders && toggleFolder(node.path)}
-                >
-                    <div className="folder-tree__folder-header">
-                        {hasSubFolders && (
-                            <span className="folder-tree__chevron">
-                                {isExpanded ? <ChevronDown24Regular /> : <ChevronRight24Regular />}
-                            </span>
-                        )}
-                        <span className="folder-tree__folder-icon">
-                            {isExpanded ? <FolderOpen24Regular /> : <Folder24Regular />}
-                        </span>
-                        <span className="folder-tree__folder-name">{node.name}</span>
-                        <span className="folder-tree__folder-count">
-                            ({node.songs.length} {node.songs.length === 1 ? 'שיר' : 'שירים'})
-                        </span>
-                    </div>
-                </div>
-            );
-
-            // Render songs in this folder
-            if (isExpanded && node.songs.length > 0) {
-                elements.push(
-                    <div key={`${node.path}-songs`} style={{ paddingRight: `${(level + 1) * 24}px` }}>
-                        <SongList
-                            songs={node.songs}
-                            onDelete={onDelete}
-                            onToggleFavorite={onToggleFavorite}
-                            showSearch={false}
-                        />
-                    </div>
-                );
-            }
+    songs.forEach((song) => {
+      const subFolder = song.subFolder || '';
+      
+      // Check if song is in current folder or subfolder
+      if (pathStr === '') {
+        // Root level
+        if (!subFolder) {
+          songsInFolder.push(song);
+        } else {
+          const firstPart = subFolder.split(/[/\\]/)[0];
+          foldersMap.set(firstPart, (foldersMap.get(firstPart) || 0) + 1);
         }
-
-        // Render subfolders
-        if (isExpanded || !node.path) {
-            node.subFolders.forEach((subNode) => {
-                elements.push(...renderFolderNode(subNode, node.path ? level + 1 : level));
-            });
+      } else {
+        // Inside a folder
+        if (subFolder === pathStr) {
+          songsInFolder.push(song);
+        } else if (subFolder.startsWith(pathStr + '/') || subFolder.startsWith(pathStr + '\\')) {
+          const remaining = subFolder.substring(pathStr.length + 1);
+          const nextPart = remaining.split(/[/\\]/)[0];
+          if (nextPart) {
+            foldersMap.set(nextPart, (foldersMap.get(nextPart) || 0) + 1);
+          }
         }
+      }
+    });
 
-        // Render root songs (songs without subfolder)
-        if (!node.path && node.songs.length > 0) {
-            elements.push(
-                <div key="root-songs">
-                    <SongList
-                        songs={node.songs}
-                        onDelete={onDelete}
-                        onToggleFavorite={onToggleFavorite}
-                        showSearch={false}
-                    />
-                </div>
-            );
-        }
+    const foldersList: FolderItem[] = Array.from(foldersMap.entries()).map(([name, count]) => ({
+      name,
+      path: pathStr ? `${pathStr}/${name}` : name,
+      songCount: count,
+    }));
 
-        return elements;
-    };
+    return { folders: foldersList, currentSongs: songsInFolder };
+  }, [songs, currentPath]);
 
-    if (songs.length === 0) {
-        return null;
-    }
-
-    // If searching, show flat list
-    if (searchQuery) {
-        return (
-            <div className="folder-tree">
-                <div className="folder-tree__header">
-                    <Input
-                        placeholder="חיפוש..."
-                        contentBefore={<Search24Regular />}
-                        value={searchQuery}
-                        onChange={(_, data) => setSearchQuery(data.value)}
-                        className="folder-tree__search"
-                    />
-                </div>
-                <SongList
-                    songs={filteredSongs}
-                    onDelete={onDelete}
-                    onToggleFavorite={onToggleFavorite}
-                    showSearch={false}
-                />
-            </div>
-        );
-    }
-
-    return (
-        <div className="folder-tree">
-            <div className="folder-tree__header">
-                <Input
-                    placeholder="חיפוש..."
-                    contentBefore={<Search24Regular />}
-                    value={searchQuery}
-                    onChange={(_, data) => setSearchQuery(data.value)}
-                    className="folder-tree__search"
-                />
-                <div className="folder-tree__actions">
-                    <Button size="small" appearance="subtle" onClick={expandAll}>
-                        פתח הכל
-                    </Button>
-                    <Button size="small" appearance="subtle" onClick={collapseAll}>
-                        סגור הכל
-                    </Button>
-                </div>
-            </div>
-
-            <div className="folder-tree__content">
-                {renderFolderNode(folderTree)}
-            </div>
-        </div>
+  // Filter songs by search
+  const filteredSongs = useMemo(() => {
+    if (!searchQuery) return currentSongs;
+    const query = searchQuery.toLowerCase();
+    return currentSongs.filter(
+      (song) => song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query)
     );
+  }, [currentSongs, searchQuery]);
+
+  const handleFolderClick = (folderPath: string) => {
+    const newPath = folderPath.split('/');
+    setCurrentPath(newPath);
+    setSearchQuery('');
+  };
+
+  const handleBack = () => {
+    setCurrentPath((prev) => prev.slice(0, -1));
+    setSearchQuery('');
+  };
+
+  const handlePlaySong = (song: Song, index: number) => {
+    setQueue(filteredSongs);
+    setQueueIndex(index);
+    setSong(song);
+    setPlaying(true);
+  };
+
+  const handlePlayAll = () => {
+    if (filteredSongs.length > 0) {
+      setQueue(filteredSongs);
+      setQueueIndex(0);
+      setSong(filteredSongs[0]);
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <div className="folder-tree">
+      <div className="folder-tree__header">
+        <div className="folder-tree__nav">
+          {currentPath.length > 0 && (
+            <Button
+              appearance="subtle"
+              icon={<ArrowLeft24Regular />}
+              onClick={handleBack}
+            >
+              חזור
+            </Button>
+          )}
+          <span className="folder-tree__path">
+            {currentPath.length === 0 ? 'תיקייה ראשית' : currentPath.join(' / ')}
+          </span>
+        </div>
+        <div className="folder-tree__actions">
+          <Input
+            placeholder="חיפוש..."
+            contentBefore={<Search24Regular />}
+            value={searchQuery}
+            onChange={(_, data) => setSearchQuery(data.value)}
+            className="folder-tree__search"
+          />
+          {filteredSongs.length > 0 && (
+            <Button appearance="primary" icon={<Play24Filled />} onClick={handlePlayAll}>
+              נגן הכל
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="folder-tree__content">
+        {/* Show folders */}
+        {!searchQuery && folders.map((folder) => (
+          <div
+            key={folder.path}
+            className="song-item song-item--folder"
+            onClick={() => handleFolderClick(folder.path)}
+          >
+            <div className="song-item__cover song-item__cover--folder">
+              <Folder24Regular />
+            </div>
+            <div className="song-item__info">
+              <span className="song-item__title">{folder.name}</span>
+              <span className="song-item__artist">
+                {folder.songCount} {folder.songCount === 1 ? 'שיר' : 'שירים'}
+              </span>
+            </div>
+            <span className="song-item__duration"></span>
+            <div className="song-item__menu"></div>
+          </div>
+        ))}
+
+        {/* Show songs */}
+        {filteredSongs.length === 0 && folders.length === 0 ? (
+          <div className="folder-tree__empty">
+            <MusicNote224Regular />
+            <p>אין שירים בתיקייה זו</p>
+          </div>
+        ) : (
+          filteredSongs.map((song, index) => (
+            <div
+              key={song.id}
+              className={`song-item ${currentSong?.id === song.id ? 'song-item--active' : ''}`}
+              onClick={() => handlePlaySong(song, index)}
+            >
+              <div className="song-item__cover">
+                {song.coverUrl ? (
+                  <img src={song.coverUrl} alt={song.title} className="song-item__cover-img" />
+                ) : (
+                  <MusicNote224Regular />
+                )}
+                <div className="song-item__play-overlay">
+                  <Play24Filled />
+                </div>
+              </div>
+
+              <div className="song-item__info">
+                <span className="song-item__title">{song.title}</span>
+                <span className="song-item__artist">{song.artist}</span>
+              </div>
+
+              <span className="song-item__duration">{formatTime(song.duration)}</span>
+
+              <Menu>
+                <MenuTrigger disableButtonEnhancement>
+                  <Button
+                    appearance="subtle"
+                    icon={<MoreVertical24Regular />}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    {onToggleFavorite && (
+                      <MenuItem
+                        icon={song.isFavorite ? <Heart24Filled /> : <Heart24Regular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavorite(song.id);
+                        }}
+                      >
+                        {song.isFavorite ? 'הסר ממועדפים' : 'הוסף למועדפים'}
+                      </MenuItem>
+                    )}
+                    {onDelete && (
+                      <MenuItem
+                        icon={<Delete24Regular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(song.id);
+                        }}
+                      >
+                        מחק
+                      </MenuItem>
+                    )}
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }

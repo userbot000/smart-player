@@ -7,9 +7,27 @@
 
 .folder-tree__header {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 8px;
+}
+
+.folder-tree__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.folder-tree__path {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.folder-tree__actions {
+  display: flex;
   gap: 12px;
   align-items: center;
-  padding: 0 8px;
 }
 
 .folder-tree__search {
@@ -17,56 +35,45 @@
   max-width: 400px;
 }
 
-.folder-tree__actions {
-  display: flex;
-  gap: 8px;
-}
-
 .folder-tree__content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.folder-tree__folder {
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-  user-select: none;
-}
-
-.folder-tree__folder:hover {
-  background-color: var(--surface-hover);
-}
-
-.folder-tree__folder-header {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  font-weight: 500;
 }
 
-.folder-tree__chevron {
+.folder-tree__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+  gap: 12px;
+}
+
+.folder-tree__empty svg {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+/* Folder item styling */
+.song-item--folder {
+  cursor: pointer;
+  background: var(--surface-secondary);
+}
+
+.song-item--folder:hover {
+  background: var(--surface-hover);
+}
+
+.song-item__cover--folder {
+  background: var(--color-primary);
+  color: white;
   display: flex;
   align-items: center;
-  color: var(--text-secondary);
-  transition: transform 0.2s;
+  justify-content: center;
 }
 
-.folder-tree__folder-icon {
-  display: flex;
-  align-items: center;
-  color: var(--color-primary);
-}
-
-.folder-tree__folder-name {
-  flex: 1;
-  font-size: 14px;
-}
-
-.folder-tree__folder-count {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: normal;
+.song-item__cover--folder svg {
+  font-size: 24px;
 }
