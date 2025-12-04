@@ -90,7 +90,25 @@ export async function isYtDlpInstalled(): Promise<boolean> {
       `Test-Path "${ytDlpPath}"`
     ]);
     const output = await command.execute();
-    return output.code === 0 && output.stdout.trim().toLowerCase() === 'true';
+    const exists = output.code === 0 && output.stdout.trim().toLowerCase() === 'true';
+
+    // If exists, try to get version for verification
+    if (exists) {
+      try {
+        const versionCmd = Command.create('powershell', [
+          '-NoProfile', '-Command',
+          `& "${ytDlpPath}" --version`
+        ]);
+        const versionOutput = await versionCmd.execute();
+        if (versionOutput.code === 0) {
+          console.log('yt-dlp version:', versionOutput.stdout.trim());
+        }
+      } catch (err) {
+        console.warn('Could not get yt-dlp version:', err);
+      }
+    }
+
+    return exists;
   } catch {
     return false;
   }
@@ -384,6 +402,27 @@ export async function downloadYouTubeAudio(
     const ffmpegPath = await getFfmpegPath();
     const outputDir = await appDataDir();
 
+    // Verify files exist
+    const ytDlpExists = await isYtDlpInstalled();
+    const ffmpegExists = await isFfmpegInstalled();
+
+    console.log('yt-dlp exists:', ytDlpExists);
+    console.log('ffmpeg exists:', ffmpegExists);
+
+    if (!ytDlpExists) {
+      return {
+        success: false,
+        error: `yt-dlp לא נמצא בנתיב: ${ytDlpPath}`
+      };
+    }
+
+    if (!ffmpegExists) {
+      return {
+        success: false,
+        error: `ffmpeg לא נמצא בנתיב: ${ffmpegPath}`
+      };
+    }
+
     // Ensure directory ends with separator
     const outputDirFixed = outputDir.endsWith('\\') || outputDir.endsWith('/')
       ? outputDir
@@ -395,11 +434,26 @@ export async function downloadYouTubeAudio(
     // Build yt-dlp command with progress output
     onProgress?.({ percent: 5, status: 'downloading', message: 'מפעיל yt-dlp...' });
 
-    // Use PowerShell to run yt-dlp from bin folder with ffmpeg location
+    // Log paths for debugging
+    console.log('yt-dlp path:', ytDlpPath);
+    console.log('ffmpeg path:', ffmpegPath);
+    console.log('Output template:', outputTemplate);
+
+    // Run yt-dlp directly with full paths - no PATH manipulation needed
+    // Note: --ffmpeg-location expects the directory containing ffmpeg.exe, not the full path
+    const binDir = await getBinDir();
+
+    console.log('Executing yt-dlp with:');
+    console.log('  yt-dlp:', ytDlpPath);
+    console.log('  ffmpeg dir:', binDir);
+    console.log('  URL:', url);
+    console.log('  Output:', outputTemplate);
+
     const command = Command.create('powershell', [
       '-NoProfile',
+      '-ExecutionPolicy', 'Bypass',
       '-Command',
-      `& "${ytDlpPath}" "${url}" --ffmpeg-location "${ffmpegPath}" --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "${outputTemplate}" --print after_move:filepath --no-playlist`
+      `& "${ytDlpPath}" "${url}" --ffmpeg-location "${binDir}" --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "${outputTemplate}" --print after_move:filepath --no-playlist`
     ]);
 
     let filePath = '';
@@ -433,6 +487,8 @@ export async function downloadYouTubeAudio(
         const trimmed = line.trim();
         if (!trimmed) return;
 
+        console.log('[yt-dlp stdout]:', trimmed);
+
         // Check if this is the final filepath output
         // Look for lines that contain a full path with audio extension
         if ((trimmed.includes('.mp3') || trimmed.includes('.m4a') || trimmed.includes('.opus')) &&
@@ -458,6 +514,8 @@ export async function downloadYouTubeAudio(
 
       command.stderr.on('data', (line) => {
         const trimmed = line.trim();
+        console.log('[yt-dlp stderr]:', trimmed);
+
         if (trimmed && !trimmed.startsWith('WARNING')) {
           lastError = trimmed;
         }

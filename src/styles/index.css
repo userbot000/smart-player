@@ -230,6 +230,26 @@
   text-align: right;
 }
 
+/* Force all Fluent UI inputs to be RTL */
+.fui-Input input,
+.fui-Textarea textarea {
+  text-align: right !important;
+  direction: rtl !important;
+}
+
+/* Fix input icons positioning */
+.fui-Input__contentBefore {
+  order: 2;
+  margin-left: var(--space-sm);
+  margin-right: 0;
+}
+
+.fui-Input__contentAfter {
+  order: 0;
+  margin-right: var(--space-sm);
+  margin-left: 0;
+}
+
 /* Fix slider direction */
 [dir="rtl"] .fui-Slider {
   direction: ltr;
@@ -248,4 +268,163 @@
 
 .downloads-view__header .view__subtitle {
   margin: 0;
+}
+
+/* ===================================
+   Dialog RTL Support
+   =================================== */
+
+/* Fix Fluent UI Dialog RTL */
+.fui-DialogSurface {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.fui-DialogTitle {
+  text-align: right !important;
+}
+
+.fui-DialogContent {
+  text-align: right !important;
+}
+
+.fui-DialogActions {
+  flex-direction: row-reverse !important;
+  justify-content: flex-start !important;
+  gap: var(--space-sm) !important;
+}
+
+/* Fix button order in dialog - primary button should be on the right */
+.fui-DialogActions > button:first-child {
+  margin-left: 0 !important;
+}
+
+.fui-DialogActions > button:last-child {
+  margin-right: 0 !important;
+}
+
+/* Fix Input in Dialog */
+.fui-DialogContent .fui-Input {
+  text-align: right !important;
+}
+
+.fui-DialogContent .fui-Input input {
+  text-align: right !important;
+}
+
+/* Fix Dialog backdrop */
+.fui-DialogSurface {
+  background: var(--surface-card) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme='dark'] .fui-DialogSurface {
+  background: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ===================================
+   Combobox & Dropdown RTL Support
+   =================================== */
+
+/* Fix Combobox RTL */
+.fui-Combobox {
+  direction: rtl !important;
+}
+
+.fui-Combobox input {
+  text-align: right !important;
+}
+
+/* Fix Listbox (dropdown menu) RTL */
+.fui-Listbox {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.fui-Option {
+  text-align: right !important;
+  justify-content: flex-start !important;
+}
+
+/* Fix Popover positioning for RTL */
+.fui-Popover {
+  direction: rtl !important;
+}
+
+/* Fix Menu RTL */
+.fui-Menu {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.fui-MenuItem {
+  text-align: right !important;
+  flex-direction: row-reverse !important;
+}
+
+.fui-MenuItem__icon {
+  margin-left: var(--space-sm) !important;
+  margin-right: 0 !important;
+}
+
+/* ===================================
+   Button RTL Support
+   =================================== */
+
+/* Fix button icon positioning in RTL */
+.fui-Button {
+  flex-direction: row-reverse !important;
+}
+
+.fui-Button > span:first-child {
+  margin-left: var(--space-xs);
+  margin-right: 0;
+}
+
+/* Fix icon-only buttons */
+.fui-Button:has(> :only-child) {
+  flex-direction: row !important;
+}
+
+.fui-Button:has(> :only-child) > span {
+  margin: 0 !important;
+}
+
+/* ===================================
+   Card RTL Support
+   =================================== */
+
+/* Fix Card header RTL */
+.fui-CardHeader {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.fui-CardHeader__header {
+  text-align: right !important;
+}
+
+.fui-CardHeader__description {
+  text-align: right !important;
+}
+
+/* Fix Card actions positioning */
+.fui-CardHeader__action {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+/* ===================================
+   Badge & Tag RTL Support
+   =================================== */
+
+.fui-Badge {
+  direction: rtl !important;
+}
+
+.fui-Tag {
+  direction: rtl !important;
 }
