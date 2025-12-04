@@ -335,8 +335,10 @@ export async function downloadYouTubeAudio(
     // Build yt-dlp command with progress output
     onProgress?.({ percent: 5, status: 'downloading', message: 'מפעיל yt-dlp...' });
 
-    // Build the command arguments
+    // Simple approach: just call yt-dlp with cmd.exe
     const args = [
+      '/c',
+      'yt-dlp',
       url,
       '--no-check-certificate',
       '--newline',
@@ -350,8 +352,7 @@ export async function downloadYouTubeAudio(
       '--no-playlist'
     ];
 
-    // Just use yt-dlp from PATH (should work after installation)
-    const command = Command.create('yt-dlp', args);
+    const command = Command.create('cmd', args);
 
     let filePath = '';
     let lastError = '';
