@@ -1,4 +1,7 @@
-import { db, WatchedFolder } from './database';
+import { db } from './database';
+import type { WatchedFolder } from './database';
+
+export type { WatchedFolder };
 
 export async function getWatchedFolders(): Promise<WatchedFolder[]> {
   return db.watchedFolders.toArray();

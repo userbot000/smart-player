@@ -21,6 +21,11 @@ export interface YtDownloadResult {
 
 // Check if network is available
 export async function isNetworkAvailable(): Promise<boolean> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    return false;
+  }
+
   try {
     const command = Command.create('powershell', [
       '-NoProfile', '-Command',
@@ -36,13 +41,21 @@ export async function isNetworkAvailable(): Promise<boolean> {
 
 // Check if yt-dlp is installed (offline check only)
 export async function isYtDlpInstalled(): Promise<boolean> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    return false;
+  }
+
   try {
+    // Check both in PATH and in local installation directory
     const command = Command.create('powershell', [
       '-NoProfile', '-Command',
-      'Get-Command yt-dlp -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source'
+      `if (Test-Path "$env:LOCALAPPDATA\\yt-dlp\\yt-dlp.exe") { Write-Output "Found" } ` +
+      `elseif (Get-Command yt-dlp -ErrorAction SilentlyContinue) { Write-Output "Found" } ` +
+      `else { exit 1 }`
     ]);
     const output = await command.execute();
-    return output.code === 0 && output.stdout.trim().length > 0;
+    return output.code === 0 && output.stdout.includes('Found');
   } catch {
     return false;
   }
@@ -50,13 +63,21 @@ export async function isYtDlpInstalled(): Promise<boolean> {
 
 // Check if ffmpeg is installed (offline check only)
 export async function isFfmpegInstalled(): Promise<boolean> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    return false;
+  }
+
   try {
+    // Check both in PATH and in local installation directory
     const command = Command.create('powershell', [
       '-NoProfile', '-Command',
-      'Get-Command ffmpeg -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source'
+      `if (Test-Path "$env:LOCALAPPDATA\\ffmpeg\\ffmpeg.exe") { Write-Output "Found" } ` +
+      `elseif (Get-Command ffmpeg -ErrorAction SilentlyContinue) { Write-Output "Found" } ` +
+      `else { exit 1 }`
     ]);
     const output = await command.execute();
-    return output.code === 0 && output.stdout.trim().length > 0;
+    return output.code === 0 && output.stdout.includes('Found');
   } catch {
     return false;
   }
@@ -66,26 +87,43 @@ export async function isFfmpegInstalled(): Promise<boolean> {
 export async function installYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    onProgress?.('לא ניתן להתקין - לא רץ בסביבת Tauri');
+    return false;
+  }
+
   onProgress?.('מוריד yt-dlp מ-GitHub...');
 
   try {
     // Download yt-dlp.exe directly from GitHub releases to user's local bin folder
     const downloadCmd = Command.create('powershell', [
-      '-NoProfile', '-Command',
+      '-NoProfile',
+      '-ExecutionPolicy', 'Bypass',
+      '-Command',
+      `$ErrorActionPreference = 'Stop'; ` +
       `$dest = "$env:LOCALAPPDATA\\yt-dlp"; ` +
       `New-Item -ItemType Directory -Force -Path $dest | Out-Null; ` +
-      `Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "$dest\\yt-dlp.exe"; ` +
+      `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ` +
+      `Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "$dest\\yt-dlp.exe" -UseBasicParsing; ` +
       `$path = [Environment]::GetEnvironmentVariable("PATH", "User"); ` +
       `if ($path -notlike "*$dest*") { [Environment]::SetEnvironmentVariable("PATH", "$path;$dest", "User") }; ` +
       `Write-Output "OK"`
     ]);
     const result = await downloadCmd.execute();
+
+    console.log('yt-dlp install result:', result);
+
     if (result.code === 0 && result.stdout.includes('OK')) {
       onProgress?.('yt-dlp הותקן בהצלחה! הפעל מחדש את האפליקציה.');
       return true;
+    } else {
+      console.error('yt-dlp install failed:', result.stderr);
+      onProgress?.(`שגיאה בהתקנה: ${result.stderr || 'לא ידוע'}`);
     }
-  } catch {
-    // Download failed
+  } catch (error) {
+    console.error('yt-dlp install exception:', error);
+    onProgress?.(`שגיאה: ${error instanceof Error ? error.message : 'לא ידוע'}`);
   }
 
   onProgress?.('לא ניתן להוריד yt-dlp. הורד ידנית מ: github.com/yt-dlp/yt-dlp/releases');
@@ -96,6 +134,12 @@ export async function installYtDlp(
 export async function updateYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    onProgress?.('לא ניתן לעדכן - לא רץ בסביבת Tauri');
+    return false;
+  }
+
   onProgress?.('מעדכן yt-dlp...');
 
   try {
@@ -122,30 +166,47 @@ export async function updateYtDlp(
 export async function installFfmpeg(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    onProgress?.('לא ניתן להתקין - לא רץ בסביבת Tauri');
+    return false;
+  }
+
   onProgress?.('מוריד ffmpeg...');
 
   try {
     // Download ffmpeg essentials build
     const downloadCmd = Command.create('powershell', [
-      '-NoProfile', '-Command',
+      '-NoProfile',
+      '-ExecutionPolicy', 'Bypass',
+      '-Command',
+      `$ErrorActionPreference = 'Stop'; ` +
       `$dest = "$env:LOCALAPPDATA\\ffmpeg"; ` +
       `New-Item -ItemType Directory -Force -Path $dest | Out-Null; ` +
       `$zip = "$env:TEMP\\ffmpeg.zip"; ` +
-      `Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile $zip; ` +
+      `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ` +
+      `Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile $zip -UseBasicParsing; ` +
       `Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force; ` +
-      `Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\*.exe" | Copy-Item -Destination $dest; ` +
+      `Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\*.exe" | Copy-Item -Destination $dest -Force; ` +
       `$path = [Environment]::GetEnvironmentVariable("PATH", "User"); ` +
       `if ($path -notlike "*$dest*") { [Environment]::SetEnvironmentVariable("PATH", "$path;$dest", "User") }; ` +
-      `Remove-Item $zip -Force; ` +
+      `Remove-Item $zip -Force -ErrorAction SilentlyContinue; ` +
       `Write-Output "OK"`
     ]);
     const result = await downloadCmd.execute();
+
+    console.log('ffmpeg install result:', result);
+
     if (result.code === 0 && result.stdout.includes('OK')) {
       onProgress?.('ffmpeg הותקן בהצלחה! הפעל מחדש את האפליקציה.');
       return true;
+    } else {
+      console.error('ffmpeg install failed:', result.stderr);
+      onProgress?.(`שגיאה בהתקנה: ${result.stderr || 'לא ידוע'}`);
     }
-  } catch {
-    // Download failed
+  } catch (error) {
+    console.error('ffmpeg install exception:', error);
+    onProgress?.(`שגיאה: ${error instanceof Error ? error.message : 'לא ידוע'}`);
   }
 
   onProgress?.('לא ניתן להוריד ffmpeg. הורד ידנית מ: ffmpeg.org/download.html');
@@ -232,6 +293,14 @@ export async function downloadYouTubeAudio(
   url: string,
   onProgress?: (progress: YtDownloadProgress) => void
 ): Promise<YtDownloadResult> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    return {
+      success: false,
+      error: 'הורדה מיוטיוב זמינה רק בגרסת Tauri של האפליקציה'
+    };
+  }
+
   const videoId = extractVideoId(url);
   if (!videoId) {
     return { success: false, error: 'כתובת YouTube לא תקינה' };
@@ -254,13 +323,20 @@ export async function downloadYouTubeAudio(
   try {
     // Get output directory
     const outputDir = await appDataDir();
-    const outputTemplate = `${outputDir}%(title)s.%(ext)s`;
+    // Ensure directory ends with separator
+    const outputDirFixed = outputDir.endsWith('\\') || outputDir.endsWith('/')
+      ? outputDir
+      : outputDir + '\\';
+    const outputTemplate = `${outputDirFixed}%(title)s.%(ext)s`;
 
     onProgress?.({ percent: 0, status: 'downloading', message: 'מתחיל הורדה...' });
 
     // Build yt-dlp command with progress output
+    // Use full path to yt-dlp in case PATH wasn't updated yet
+    const ytDlpPath = `$env:LOCALAPPDATA\\yt-dlp\\yt-dlp.exe`;
     const ytDlpCmd =
-      `yt-dlp "${url}" ` +
+      `if (Test-Path "${ytDlpPath}") { & "${ytDlpPath}" } else { yt-dlp } ` +
+      `"${url}" ` +
       `--no-check-certificate ` +
       `--newline ` +              // Output progress on new lines (important for parsing)
       `--extract-audio ` +
@@ -306,8 +382,12 @@ export async function downloadYouTubeAudio(
         if (!trimmed) return;
 
         // Check if this is the final filepath output
-        if (trimmed.endsWith('.mp3') || trimmed.endsWith('.m4a') || trimmed.endsWith('.opus')) {
+        // Look for lines that contain a full path with audio extension
+        if ((trimmed.includes('.mp3') || trimmed.includes('.m4a') || trimmed.includes('.opus')) &&
+          (trimmed.includes('\\') || trimmed.includes('/')) &&
+          !trimmed.startsWith('[')) {
           filePath = trimmed;
+          console.log('Downloaded file path:', filePath);
           return;
         }
 
@@ -354,6 +434,11 @@ export async function getYouTubeInfo(url: string): Promise<{
   thumbnail?: string;
   error?: string;
 }> {
+  // Check if running in Tauri
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+    return { error: 'זמין רק בגרסת Tauri' };
+  }
+
   const videoId = extractVideoId(url);
   if (!videoId) {
     return { error: 'כתובת YouTube לא תקינה' };
