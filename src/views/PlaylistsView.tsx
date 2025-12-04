@@ -116,7 +116,7 @@ export function PlaylistsView({ onOpenRingtone, onOpenMetadata }: PlaylistsViewP
                 רשימה חדשה
               </Button>
             </DialogTrigger>
-            <DialogSurface>
+            <DialogSurface dir="rtl">
               <DialogBody>
                 <DialogTitle>צור רשימת השמעה חדשה</DialogTitle>
                 <DialogContent>
@@ -125,15 +125,16 @@ export function PlaylistsView({ onOpenRingtone, onOpenMetadata }: PlaylistsViewP
                     value={newPlaylistName}
                     onChange={(_, data) => setNewPlaylistName(data.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreatePlaylist()}
+                    style={{ width: '100%' }}
                   />
                 </DialogContent>
-                <DialogActions>
-                  <DialogTrigger disableButtonEnhancement>
-                    <Button appearance="secondary">ביטול</Button>
-                  </DialogTrigger>
+                <DialogActions style={{ flexDirection: 'row-reverse', justifyContent: 'flex-start' }}>
                   <Button appearance="primary" onClick={handleCreatePlaylist}>
                     צור
                   </Button>
+                  <DialogTrigger disableButtonEnhancement>
+                    <Button appearance="secondary">ביטול</Button>
+                  </DialogTrigger>
                 </DialogActions>
               </DialogBody>
             </DialogSurface>
