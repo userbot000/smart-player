@@ -57,7 +57,10 @@
 **אופציה 1: בניה אוטומטית ב-GitHub (מומלץ)**
 1. עבור ל-Actions → "Initialize and Build Android"
 2. לחץ "Run workflow"
-3. הורד את ה-APK מ-Artifacts
+3. המתן 15-30 דקות
+4. הורד את ה-APK מ-Artifacts
+
+📖 **מדריך מפורט**: ראה [QUICK_START_ANDROID.md](QUICK_START_ANDROID.md)
 
 **אופציה 2: בניה מקומית**
 1. עקוב אחר ההוראות ב-`ANDROID_SETUP.md`

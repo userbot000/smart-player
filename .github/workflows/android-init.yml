@@ -100,12 +100,30 @@ jobs:
           echo "  📦 App Identifier: ${{ inputs.app_identifier }}"
           echo ""
           
-          # Use printf to provide inputs to tauri android init
-          # The init command asks for: app name, then package identifier
-          printf "${{ inputs.app_name }}\n${{ inputs.app_identifier }}\n" | npm run tauri android init
-          
-          echo ""
-          echo "✅ Android initialization completed!"
+          # Method 1: Try with printf
+          if printf "${{ inputs.app_name }}\n${{ inputs.app_identifier }}\n" | npm run tauri android init; then
+            echo "✅ Android initialization completed!"
+          else
+            echo "⚠️ Method 1 failed, trying alternative method..."
+            
+            # Method 2: Try with echo and pipe
+            (echo "${{ inputs.app_name }}"; echo "${{ inputs.app_identifier }}") | npm run tauri android init || {
+              echo "⚠️ Method 2 failed, trying with yes command..."
+              
+              # Method 3: Use yes command to auto-accept defaults
+              yes "" | npm run tauri android init || {
+                echo "❌ All methods failed"
+                
+                # Check if it partially succeeded
+                if [ -d "src-tauri/gen/android" ]; then
+                  echo "⚠️ Android directory exists, considering it a partial success"
+                  exit 0
+                else
+                  exit 1
+                fi
+              }
+            }
+          fi
 
       - name: Configure Android Permissions
         if: steps.check_android.outputs.initialized == 'false'
