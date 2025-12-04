@@ -46,8 +46,24 @@ jobs:
 
       - name: Setup Android SDK & NDK
         run: |
-          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
-          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+          # Check available NDK versions
+          echo "Available NDK versions:"
+          ls -la ${ANDROID_SDK_ROOT}/ndk/ || echo "No NDK directory found"
+          
+          # Try to install specific NDK version, or use existing one
+          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125" || true
+          
+          # Find the NDK directory (use installed version)
+          if [ -d "${ANDROID_SDK_ROOT}/ndk/26.1.10909125" ]; then
+            NDK_PATH="${ANDROID_SDK_ROOT}/ndk/26.1.10909125"
+          else
+            # Use the first available NDK
+            NDK_PATH=$(ls -d ${ANDROID_SDK_ROOT}/ndk/* | head -n 1)
+          fi
+          
+          echo "Using NDK: $NDK_PATH"
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+          echo "NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -60,42 +76,36 @@ jobs:
       - name: Check if Android already initialized
         id: check_android
         run: |
-          if [ -d "src-tauri/gen/android" ]; then
+          if [ -d "src-tauri/gen/android" ] && [ -f "src-tauri/gen/android/app/build.gradle.kts" ]; then
             echo "initialized=true" >> $GITHUB_OUTPUT
-            echo "Android already initialized"
+            echo "✅ Android already initialized"
           else
             echo "initialized=false" >> $GITHUB_OUTPUT
-            echo "Android not initialized yet"
+            echo "❌ Android not initialized yet"
+          fi
+
+      - name: Clean partial Android init (if exists)
+        if: steps.check_android.outputs.initialized == 'false'
+        run: |
+          if [ -d "src-tauri/gen/android" ]; then
+            echo "Found partial Android initialization, cleaning..."
+            rm -rf src-tauri/gen/android
           fi
 
       - name: Initialize Android (if needed)
         if: steps.check_android.outputs.initialized == 'false'
         run: |
-          # Create expect script for automated input
-          cat > init_android.exp << 'EOF'
-          #!/usr/bin/expect -f
-          set timeout -1
-          spawn npm run tauri android init
+          echo "🚀 Initializing Android with:"
+          echo "  📱 App Name: ${{ inputs.app_name }}"
+          echo "  📦 App Identifier: ${{ inputs.app_identifier }}"
+          echo ""
           
-          expect "What is your app name?*"
-          send "$env(APP_NAME)\r"
+          # Use printf to provide inputs to tauri android init
+          # The init command asks for: app name, then package identifier
+          printf "${{ inputs.app_name }}\n${{ inputs.app_identifier }}\n" | npm run tauri android init
           
-          expect "What should the Android package identifier be?*"
-          send "$env(APP_IDENTIFIER)\r"
-          
-          expect eof
-          EOF
-          
-          chmod +x init_android.exp
-          
-          # Install expect
-          sudo apt-get update
-          sudo apt-get install -y expect
-          
-          # Run initialization
-          export APP_NAME="${{ inputs.app_name }}"
-          export APP_IDENTIFIER="${{ inputs.app_identifier }}"
-          ./init_android.exp
+          echo ""
+          echo "✅ Android initialization completed!"
 
       - name: Configure Android Permissions
         if: steps.check_android.outputs.initialized == 'false'
