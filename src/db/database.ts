@@ -105,7 +105,7 @@ export const db = database;
 const blobUrlCache = new Map<string, string>();
 
 // Check if running in Tauri
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+const isTauri = typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
 
 // Read audio file from disk using Tauri
 export async function readAudioFile(filePath: string): Promise<ArrayBuffer | null> {

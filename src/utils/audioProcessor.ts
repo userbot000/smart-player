@@ -7,7 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
  * Check if running in Tauri environment
  */
 export function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI__' in window;
+  return typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
 }
 
 /**

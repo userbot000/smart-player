@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.user.smart-player",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:web",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
@@ -25,7 +25,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,7 +37,16 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "opus"],
+        "ext": [
+          "mp3",
+          "wav",
+          "flac",
+          "ogg",
+          "m4a",
+          "aac",
+          "wma",
+          "opus"
+        ],
         "description": "Audio File",
         "role": "Viewer",
         "mimeType": "audio/*"
@@ -47,7 +58,9 @@
         "sidebarImage": null,
         "installerIcon": null,
         "installMode": "currentUser",
-        "languages": ["English"],
+        "languages": [
+          "English"
+        ],
         "displayLanguageSelector": false,
         "compression": "lzma"
       }

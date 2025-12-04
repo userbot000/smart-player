@@ -4,8 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tauri dev",
+    "dev:web": "vite",
     "build": "tsc && vite build",
+    "build:tauri": "tauri build",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:android:init": "tauri android init",

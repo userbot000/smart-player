@@ -73,7 +73,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
   const { showSuccess, showWarning, showError } = useToast();
 
   // Check if running in Tauri
-  const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+  const isTauri = typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
 
   // Rescan using Tauri - no dialog needed
   const handleRescan = async () => {
@@ -247,6 +247,16 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
           processedCount++;
           setProgress({ current: processedCount, total: newFiles.length, skipped: skippedCount });
 
+          // Calculate relative subfolder path
+          const relativePath = file.path.replace(folderPathSelected, '').replace(/^[/\\]/, '');
+          const subFolder = relativePath.includes('/') || relativePath.includes('\\')
+            ? relativePath.substring(0, relativePath.lastIndexOf(relativePath.includes('/') ? '/' : '\\'))
+            : undefined;
+          
+          if (subFolder) {
+            console.log('Found subfolder:', subFolder, 'for file:', file.name);
+          }
+
           return {
             id: crypto.randomUUID(),
             title: metadata.title,
@@ -257,6 +267,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
             coverUrl: metadata.coverUrl,
             filePath: '',
             originalPath: file.path,
+            subFolder,
             addedAt: Date.now(),
             playCount: 0,
             folderId: currentFolderId,

@@ -37,7 +37,7 @@ async fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
     fs::read(&file_path).map_err(|e| format!("שגיאה בקריאת קובץ: {}", e))
 }
 
-/// Scan folder for audio files - reads only metadata portion (first 256KB) for fast scanning
+/// Scan folder for audio files recursively - reads only metadata portion (first 256KB) for fast scanning
 #[tauri::command]
 async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
     let path = Path::new(&folder_path);
@@ -52,32 +52,55 @@ async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
     // Read only first 256KB for metadata extraction (much faster!)
     const METADATA_SIZE: usize = 256 * 1024;
 
-    if let Ok(entries) = fs::read_dir(path) {
-        for entry in entries.flatten() {
-            let file_path = entry.path();
-            if file_path.is_file() {
-                if let Some(ext) = file_path.extension() {
-                    let ext_str = ext.to_string_lossy().to_lowercase();
-                    if audio_extensions.contains(&ext_str.as_str()) {
-                        // Read only metadata portion
-                        if let Ok(mut file) = File::open(&file_path) {
-                            let mut buffer = vec![0u8; METADATA_SIZE];
-                            let bytes_read = file.read(&mut buffer).unwrap_or(0);
-                            buffer.truncate(bytes_read);
-                            
-                            files.push(AudioFile {
-                                name: file_path.file_name()
-                                    .map(|n| n.to_string_lossy().to_string())
-                                    .unwrap_or_default(),
-                                path: file_path.to_string_lossy().to_string(),
-                                data: buffer,
-                            });
+    // Recursive function to scan directories
+    fn scan_dir_recursive(
+        dir: &Path,
+        audio_extensions: &[&str],
+        files: &mut Vec<AudioFile>,
+        metadata_size: usize,
+    ) -> Result<(), String> {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                
+                // If it's a directory, scan it recursively
+                if file_path.is_dir() {
+                    // Skip hidden folders and system folders
+                    if let Some(folder_name) = file_path.file_name() {
+                        let name = folder_name.to_string_lossy();
+                        if !name.starts_with('.') && name != "System Volume Information" && name != "$RECYCLE.BIN" {
+                            let _ = scan_dir_recursive(&file_path, audio_extensions, files, metadata_size);
+                        }
+                    }
+                }
+                // If it's a file, check if it's an audio file
+                else if file_path.is_file() {
+                    if let Some(ext) = file_path.extension() {
+                        let ext_str = ext.to_string_lossy().to_lowercase();
+                        if audio_extensions.contains(&ext_str.as_str()) {
+                            // Read only metadata portion
+                            if let Ok(mut file) = File::open(&file_path) {
+                                let mut buffer = vec![0u8; metadata_size];
+                                let bytes_read = file.read(&mut buffer).unwrap_or(0);
+                                buffer.truncate(bytes_read);
+                                
+                                files.push(AudioFile {
+                                    name: file_path.file_name()
+                                        .map(|n| n.to_string_lossy().to_string())
+                                        .unwrap_or_default(),
+                                    path: file_path.to_string_lossy().to_string(),
+                                    data: buffer,
+                                });
+                            }
                         }
                     }
                 }
             }
         }
+        Ok(())
     }
+
+    scan_dir_recursive(path, &audio_extensions, &mut files, METADATA_SIZE)?;
 
     Ok(files)
 }

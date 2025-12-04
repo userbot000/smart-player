@@ -17,6 +17,7 @@ export interface Song {
   folderId?: string; // Reference to watched folder
   fileName?: string; // Original filename for re-scanning
   originalPath?: string; // Full path to original file (for Tauri)
+  subFolder?: string; // Relative subfolder path within watched folder
   audioData?: ArrayBuffer; // Stored audio file data
   isFavorite?: boolean; // User marked as favorite
 }

@@ -1,6 +1,9 @@
+import { useState, useMemo } from 'react';
 import { Library24Regular, History24Regular, Heart24Regular } from '@fluentui/react-icons';
+import { Button } from '@fluentui/react-components';
+import { List24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
 import { Song } from '../types';
-import { SongList, AddSongsButton } from '../components';
+import { SongList, FolderTreeView, AddSongsButton } from '../components';
 
 interface LibraryViewProps {
   songs: Song[];
@@ -21,6 +24,13 @@ export function LibraryView({
   viewType = 'library',
   showAddButton = true,
 }: LibraryViewProps) {
+  const [viewMode, setViewMode] = useState<'list' | 'folders'>('folders');
+
+  // Check if any songs have subfolders
+  const hasFolders = useMemo(() => {
+    return songs.some(song => song.subFolder);
+  }, [songs]);
+
   const getEmptyIcon = () => {
     switch (viewType) {
       case 'history':
@@ -49,11 +59,29 @@ export function LibraryView({
     <div className="view">
       <div className="view__header">
         <h2 className="view__title">{title}</h2>
-        {showAddButton && (
-          <div className="view__header-actions">
-            <AddSongsButton onSongsAdded={onSongsAdded} />
-          </div>
-        )}
+        <div className="view__header-actions">
+          {hasFolders && songs.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
+              <Button
+                appearance={viewMode === 'list' ? 'primary' : 'subtle'}
+                icon={<List24Regular />}
+                onClick={() => setViewMode('list')}
+                size="small"
+              >
+                רשימה
+              </Button>
+              <Button
+                appearance={viewMode === 'folders' ? 'primary' : 'subtle'}
+                icon={<FolderOpen24Regular />}
+                onClick={() => setViewMode('folders')}
+                size="small"
+              >
+                תיקיות
+              </Button>
+            </div>
+          )}
+          {showAddButton && <AddSongsButton onSongsAdded={onSongsAdded} />}
+        </div>
       </div>
 
       {songs.length === 0 ? (
@@ -63,7 +91,20 @@ export function LibraryView({
           <p className="empty-state__text">{emptyText.text}</p>
         </div>
       ) : (
-        <SongList songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} showSearch={true} />
+        <>
+          {!hasFolders && songs.length > 0 && viewType === 'library' && (
+            <div style={{ padding: '12px', background: 'var(--surface-secondary)', borderRadius: '8px', marginBottom: '16px' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
+                💡 לא נמצאו תתי-תיקיות. אם יש לך שירים בתתי-תיקיות, סרוק מחדש את התיקייה מההגדרות כדי לראות את תצוגת התיקיות.
+              </p>
+            </div>
+          )}
+          {viewMode === 'folders' && hasFolders ? (
+            <FolderTreeView songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} />
+          ) : (
+            <SongList songs={songs} onDelete={onDelete} onToggleFavorite={onToggleFavorite} showSearch={true} />
+          )}
+        </>
       )}
     </div>
   );

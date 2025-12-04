@@ -22,7 +22,7 @@ export interface YtDownloadResult {
 // Check if network is available
 export async function isNetworkAvailable(): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     return false;
   }
 
@@ -42,7 +42,7 @@ export async function isNetworkAvailable(): Promise<boolean> {
 // Check if yt-dlp is installed (offline check only)
 export async function isYtDlpInstalled(): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     return false;
   }
 
@@ -64,7 +64,7 @@ export async function isYtDlpInstalled(): Promise<boolean> {
 // Check if ffmpeg is installed (offline check only)
 export async function isFfmpegInstalled(): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     return false;
   }
 
@@ -88,7 +88,7 @@ export async function installYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     onProgress?.('לא ניתן להתקין - לא רץ בסביבת Tauri');
     return false;
   }
@@ -135,7 +135,7 @@ export async function updateYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     onProgress?.('לא ניתן לעדכן - לא רץ בסביבת Tauri');
     return false;
   }
@@ -167,7 +167,7 @@ export async function installFfmpeg(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     onProgress?.('לא ניתן להתקין - לא רץ בסביבת Tauri');
     return false;
   }
@@ -294,7 +294,7 @@ export async function downloadYouTubeAudio(
   onProgress?: (progress: YtDownloadProgress) => void
 ): Promise<YtDownloadResult> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     return {
       success: false,
       error: 'הורדה מיוטיוב זמינה רק בגרסת Tauri של האפליקציה'
@@ -435,7 +435,7 @@ export async function getYouTubeInfo(url: string): Promise<{
   error?: string;
 }> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !('__TAURI__' in window)) {
+  if (typeof window === 'undefined' || !(window as any).__TAURI__) {
     return { error: 'זמין רק בגרסת Tauri' };
   }
 
@@ -466,3 +466,4 @@ export async function getYouTubeInfo(url: string): Promise<{
     return { error: 'שגיאה בקבלת מידע' };
   }
 }
+

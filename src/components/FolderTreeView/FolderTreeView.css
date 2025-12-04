@@ -1,0 +1,72 @@
+.folder-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.folder-tree__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.folder-tree__search {
+  flex: 1;
+  max-width: 400px;
+}
+
+.folder-tree__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.folder-tree__content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.folder-tree__folder {
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.folder-tree__folder:hover {
+  background-color: var(--surface-hover);
+}
+
+.folder-tree__folder-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.folder-tree__chevron {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.folder-tree__folder-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-primary);
+}
+
+.folder-tree__folder-name {
+  flex: 1;
+  font-size: 14px;
+}
+
+.folder-tree__folder-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: normal;
+}
