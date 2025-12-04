@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FluentProvider,
   createDarkTheme,
@@ -10,10 +10,11 @@ import { Sidebar, PlayerControls } from './components';
 import { ToastProvider } from './components/Toast/ToastProvider';
 import { HomeView, LibraryView, AlbumsView, ArtistsView, DownloadsView, SettingsView, ToolsView } from './views';
 import { Song, DownloadTask } from './types';
-import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences, getPlayerState, savePlayerState } from './db/database';
+import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences, getPlayerState, savePlayerState, addSong } from './db/database';
 import { usePlayerStore } from './store/playerStore';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
+import { extractMetadataFromBuffer } from './utils/audioMetadata';
 
 import './styles/index.css';
 
@@ -28,7 +29,77 @@ function App() {
   const [accentColor, setAccentColor] = useState('blue');
   const [isAppReady, setIsAppReady] = useState(false);
   
-  const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue } = usePlayerStore();
+  const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue, setPlaying } = usePlayerStore();
+
+  // Handle files opened from context menu / file association
+  const handleExternalFiles = useCallback(async (filePaths: string[]) => {
+    if (filePaths.length === 0) return;
+    
+    const newSongs: Song[] = [];
+    
+    for (const filePath of filePaths) {
+      // Check if song already exists in library
+      const existingSongs = await getAllSongs();
+      const existing = existingSongs.find(s => s.originalPath === filePath || s.filePath === filePath);
+      
+      if (existing) {
+        newSongs.push(existing);
+      } else {
+        // Create temporary song entry for playback
+        const fileName = filePath.split(/[/\\]/).pop() || 'Unknown';
+        const nameWithoutExt = fileName.replace(/\.[^.]+$/, '');
+        
+        // Try to parse metadata
+        let title = nameWithoutExt;
+        let artist = 'אמן לא ידוע';
+        let album: string | undefined;
+        let duration = 0;
+        let coverUrl: string | undefined;
+        
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const data: number[] = await invoke('read_audio_file', { filePath });
+          const buffer = new Uint8Array(data).buffer;
+          const metadata = await extractMetadataFromBuffer(buffer, fileName);
+          title = metadata.title || nameWithoutExt;
+          artist = metadata.artist || 'אמן לא ידוע';
+          album = metadata.album;
+          duration = metadata.duration;
+          coverUrl = metadata.coverUrl;
+        } catch {
+          // Use filename as fallback
+        }
+        
+        const newSong: Song = {
+          id: crypto.randomUUID(),
+          title,
+          artist,
+          album,
+          duration,
+          filePath: filePath,
+          originalPath: filePath,
+          coverUrl,
+          addedAt: Date.now(),
+          playCount: 0,
+          isFavorite: false,
+        };
+        
+        // Add to library
+        await addSong(newSong);
+        newSongs.push(newSong);
+      }
+    }
+    
+    if (newSongs.length > 0) {
+      // Set queue and play first song
+      setQueue(newSongs);
+      setSong(newSongs[0]);
+      setPlaying(true);
+      
+      // Reload songs list
+      loadSongs();
+    }
+  }, [setSong, setQueue, setPlaying]);
 
   // Brand color palettes for each accent color
   const brandColors: Record<string, BrandVariants> = useMemo(
@@ -202,6 +273,17 @@ function App() {
         startChannelTracking((channel, videos) => {
           console.log(`New videos from ${channel.name}:`, videos);
         });
+        
+        // Check for files opened via command line
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const pendingFiles: string[] = await invoke('get_pending_files');
+          if (pendingFiles.length > 0) {
+            handleExternalFiles(pendingFiles);
+          }
+        } catch {
+          // Not in Tauri environment
+        }
       } catch (error) {
         console.error('Error initializing app:', error);
       } finally {
@@ -214,7 +296,29 @@ function App() {
     return () => {
       stopChannelTracking();
     };
-  }, []);
+  }, [handleExternalFiles]);
+  
+  // Listen for files opened while app is running
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    
+    const setupListener = async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen<string[]>('files-opened', (event) => {
+          handleExternalFiles(event.payload);
+        });
+      } catch {
+        // Not in Tauri environment
+      }
+    };
+    
+    setupListener();
+    
+    return () => {
+      unlisten?.();
+    };
+  }, [handleExternalFiles]);
 
   // Load saved player state on startup (only after app is ready)
   useEffect(() => {

@@ -33,9 +33,19 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "fileAssociations": [
+      {
+        "ext": ["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "opus"],
+        "description": "Audio File",
+        "role": "Viewer",
+        "mimeType": "audio/*"
+      }
+    ],
     "windows": {
       "wix": {
-        "language": "he-IL"
+        "language": "he-IL",
+        "fragmentPaths": ["wix/main.wxs"],
+        "componentGroupRefs": ["ContextMenuComponents"]
       }
     },
     "shortDescription": "Smart Music Player",

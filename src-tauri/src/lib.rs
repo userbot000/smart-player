@@ -1,7 +1,9 @@
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::Path;
+use std::sync::Mutex;
 use serde::Serialize;
+use tauri::{Manager, Emitter};
 
 #[derive(Serialize)]
 pub struct AudioFile {
@@ -9,6 +11,9 @@ pub struct AudioFile {
     path: String,
     data: Vec<u8>, // Only metadata portion (first 256KB)
 }
+
+// Store for files opened via command line / file association
+static PENDING_FILES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -77,6 +82,22 @@ async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
     Ok(files)
 }
 
+/// Get files that were opened via command line / file association
+#[tauri::command]
+fn get_pending_files() -> Vec<String> {
+    let mut files = PENDING_FILES.lock().unwrap();
+    let result = files.clone();
+    files.clear();
+    result
+}
+
+/// Check if a file is an audio file
+fn is_audio_file(path: &str) -> bool {
+    let audio_extensions = ["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "opus"];
+    let path_lower = path.to_lowercase();
+    audio_extensions.iter().any(|ext| path_lower.ends_with(ext))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -86,7 +107,30 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
-        .invoke_handler(tauri::generate_handler![greet, scan_folder, write_file, read_audio_file])
+        .setup(|app| {
+            // Handle files passed via command line arguments
+            let args: Vec<String> = std::env::args().collect();
+            let audio_files: Vec<String> = args.iter()
+                .skip(1) // Skip the executable path
+                .filter(|arg| is_audio_file(arg) && Path::new(arg).exists())
+                .cloned()
+                .collect();
+            
+            if !audio_files.is_empty() {
+                let mut pending = PENDING_FILES.lock().unwrap();
+                pending.extend(audio_files.clone());
+                
+                // Emit event to frontend after window is ready
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    let _ = app_handle.emit("files-opened", audio_files);
+                });
+            }
+            
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![greet, scan_folder, write_file, read_audio_file, get_pending_files])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
