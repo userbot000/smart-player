@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::Mutex;
 use serde::Serialize;
 use tauri::Emitter;
+use serde_json;
 
 #[derive(Serialize)]
 pub struct AudioFile {
@@ -37,9 +38,9 @@ async fn read_audio_file(file_path: String) -> Result<Vec<u8>, String> {
     fs::read(&file_path).map_err(|e| format!("שגיאה בקריאת קובץ: {}", e))
 }
 
-/// Scan folder for audio files recursively - reads only metadata portion (first 256KB) for fast scanning
+/// Scan folder for audio files recursively with progress updates
 #[tauri::command]
-async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
+async fn scan_folder(folder_path: String, app_handle: tauri::AppHandle) -> Result<Vec<AudioFile>, String> {
     let path = Path::new(&folder_path);
     
     if !path.exists() {
@@ -51,13 +52,26 @@ async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
     
     // Read only first 256KB for metadata extraction (much faster!)
     const METADATA_SIZE: usize = 256 * 1024;
+    const BATCH_SIZE: usize = 10; // Process in batches of 10 files
 
-    // Recursive function to scan directories
+    // First pass: count total files for progress tracking
+    let total_files = count_audio_files(&path, &audio_extensions);
+    let _ = app_handle.emit("scan-progress", serde_json::json!({
+        "phase": "counting",
+        "total": total_files,
+        "processed": 0,
+        "current_file": ""
+    }));
+
+    // Recursive function to scan directories with progress
     fn scan_dir_recursive(
         dir: &Path,
         audio_extensions: &[&str],
         files: &mut Vec<AudioFile>,
         metadata_size: usize,
+        processed: &mut usize,
+        total: usize,
+        app_handle: &tauri::AppHandle,
     ) -> Result<(), String> {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
@@ -69,7 +83,7 @@ async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
                     if let Some(folder_name) = file_path.file_name() {
                         let name = folder_name.to_string_lossy();
                         if !name.starts_with('.') && name != "System Volume Information" && name != "$RECYCLE.BIN" {
-                            let _ = scan_dir_recursive(&file_path, audio_extensions, files, metadata_size);
+                            let _ = scan_dir_recursive(&file_path, audio_extensions, files, metadata_size, processed, total, app_handle);
                         }
                     }
                 }
@@ -91,6 +105,20 @@ async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
                                     path: file_path.to_string_lossy().to_string(),
                                     data: buffer,
                                 });
+
+                                *processed += 1;
+
+                                // Send progress update every BATCH_SIZE files
+                                if *processed % BATCH_SIZE == 0 || *processed == total {
+                                    let _ = app_handle.emit("scan-progress", serde_json::json!({
+                                        "phase": "scanning",
+                                        "total": total,
+                                        "processed": *processed,
+                                        "current_file": file_path.file_name()
+                                            .map(|n| n.to_string_lossy().to_string())
+                                            .unwrap_or_default()
+                                    }));
+                                }
                             }
                         }
                     }
@@ -100,9 +128,47 @@ async fn scan_folder(folder_path: String) -> Result<Vec<AudioFile>, String> {
         Ok(())
     }
 
-    scan_dir_recursive(path, &audio_extensions, &mut files, METADATA_SIZE)?;
+    let mut processed = 0;
+    scan_dir_recursive(path, &audio_extensions, &mut files, METADATA_SIZE, &mut processed, total_files, &app_handle)?;
+
+    // Final progress update
+    let _ = app_handle.emit("scan-progress", serde_json::json!({
+        "phase": "complete",
+        "total": total_files,
+        "processed": processed,
+        "current_file": ""
+    }));
 
     Ok(files)
+}
+
+/// Count audio files in directory (for progress tracking)
+fn count_audio_files(dir: &Path, audio_extensions: &[&str]) -> usize {
+    let mut count = 0;
+    
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let file_path = entry.path();
+            
+            if file_path.is_dir() {
+                if let Some(folder_name) = file_path.file_name() {
+                    let name = folder_name.to_string_lossy();
+                    if !name.starts_with('.') && name != "System Volume Information" && name != "$RECYCLE.BIN" {
+                        count += count_audio_files(&file_path, audio_extensions);
+                    }
+                }
+            } else if file_path.is_file() {
+                if let Some(ext) = file_path.extension() {
+                    let ext_str = ext.to_string_lossy().to_lowercase();
+                    if audio_extensions.contains(&ext_str.as_str()) {
+                        count += 1;
+                    }
+                }
+            }
+        }
+    }
+    
+    count
 }
 
 /// Get files that were opened via command line / file association

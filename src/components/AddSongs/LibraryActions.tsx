@@ -30,9 +30,8 @@ export function LibraryActions({ onSongsAdded }: LibraryActionsProps) {
       let totalAdded = 0;
       for (const folder of folders) {
         try {
-          // Scan folder
+          // Scan folder with progress tracking
           const files: any[] = await invoke('scan_folder', { folderPath: folder.path });
-          // Count would be added here, but for simplicity just trigger reload
           totalAdded += files.length;
         } catch (error) {
           console.error(`Error scanning ${folder.name}:`, error);

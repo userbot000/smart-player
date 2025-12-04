@@ -90,9 +90,25 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
     }
 
     setIsLoading(true);
+    
     try {
       const { invoke } = await import('@tauri-apps/api/core');
+      const { listen } = await import('@tauri-apps/api/event');
+      
+      // Listen for scan progress
+      const unlisten = await listen('scan-progress', (event: any) => {
+        const data = event.payload;
+        if (data.phase === 'counting') {
+          setProgress({ current: 0, total: data.total, skipped: 0 });
+        } else if (data.phase === 'scanning') {
+          setProgress({ current: data.processed, total: data.total, skipped: 0 });
+        }
+      });
+
       const files: AudioFileFromRust[] = await invoke('scan_folder', { folderPath });
+      
+      // Stop listening
+      unlisten();
 
       if (files.length === 0) {
         showWarning('לא נמצאו קבצי אודיו בתיקייה');
@@ -197,7 +213,22 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
       const folderNameSelected = folderPathSelected.split(/[/\\]/).pop() || 'תיקייה חדשה';
 
       const { invoke } = await import('@tauri-apps/api/core');
+      const { listen } = await import('@tauri-apps/api/event');
+      
+      // Listen for scan progress
+      const unlisten = await listen('scan-progress', (event: any) => {
+        const data = event.payload;
+        if (data.phase === 'counting') {
+          setProgress({ current: 0, total: data.total, skipped: 0 });
+        } else if (data.phase === 'scanning') {
+          setProgress({ current: data.processed, total: data.total, skipped: 0 });
+        }
+      });
+
       const files: AudioFileFromRust[] = await invoke('scan_folder', { folderPath: folderPathSelected });
+      
+      // Stop listening
+      unlisten();
 
       if (files.length === 0) {
         showWarning('לא נמצאו קבצי אודיו בתיקייה');
