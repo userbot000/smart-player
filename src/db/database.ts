@@ -86,12 +86,44 @@ export const db = new SmartPlayerDB();
 // Cache for blob URLs to avoid recreating them
 const blobUrlCache = new Map<string, string>();
 
-// Create blob URL from stored audio data
-export function createAudioUrl(song: Song): string {
+// Check if running in Tauri
+const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
+// Read audio file from disk using Tauri
+export async function readAudioFile(filePath: string): Promise<ArrayBuffer | null> {
+  if (!isTauri || !filePath) return null;
+  
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const data: number[] = await invoke('read_audio_file', { filePath });
+    return new Uint8Array(data).buffer;
+  } catch (error) {
+    console.error('Error reading audio file:', filePath, error);
+    return null;
+  }
+}
+
+// Create blob URL from file path (reads from disk)
+export async function createAudioUrlAsync(song: Song): Promise<string | null> {
+  // Return cached URL if exists
   if (blobUrlCache.has(song.id)) {
     return blobUrlCache.get(song.id)!;
   }
 
+  // Try to read from original path first
+  const filePath = song.originalPath || song.filePath;
+  
+  if (isTauri && filePath) {
+    const audioData = await readAudioFile(filePath);
+    if (audioData) {
+      const blob = new Blob([audioData], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      blobUrlCache.set(song.id, url);
+      return url;
+    }
+  }
+
+  // Fallback to stored audioData (for legacy/migration)
   if (song.audioData) {
     const blob = new Blob([song.audioData], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
@@ -99,7 +131,24 @@ export function createAudioUrl(song: Song): string {
     return url;
   }
 
-  return song.filePath;
+  return null;
+}
+
+// Sync version for backward compatibility (returns cached or null)
+export function createAudioUrl(song: Song): string {
+  if (blobUrlCache.has(song.id)) {
+    return blobUrlCache.get(song.id)!;
+  }
+
+  // For legacy songs with audioData
+  if (song.audioData) {
+    const blob = new Blob([song.audioData], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    blobUrlCache.set(song.id, url);
+    return url;
+  }
+
+  return song.filePath || '';
 }
 
 // Revoke blob URL to free memory
@@ -115,18 +164,25 @@ export function getBlobCacheSize(): number {
   return blobUrlCache.size;
 }
 
+// Check if audio URL is cached
+export function isAudioCached(songId: string): boolean {
+  return blobUrlCache.has(songId);
+}
+
 // Helper functions
 export async function getAllSongs(): Promise<Song[]> {
   const songs = await db.songs.toArray();
-  // Create blob URLs for each song
-  return songs.map((song) => ({
-    ...song,
-    filePath: createAudioUrl(song),
-  }));
+  // Return songs without loading audio data - will be loaded on demand
+  return songs;
 }
 
 export async function addSong(song: Song): Promise<string> {
   return db.songs.add(song);
+}
+
+// Bulk add songs for faster indexing
+export async function addSongsBulk(songs: Song[]): Promise<void> {
+  await db.songs.bulkAdd(songs);
 }
 
 export async function updateSong(id: string, updates: Partial<Song>): Promise<number> {
@@ -160,19 +216,12 @@ export async function getRecentlyPlayed(limit = 20): Promise<Song[]> {
     .limit(limit)
     .toArray();
 
-  return songs.map((song) => ({
-    ...song,
-    filePath: createAudioUrl(song),
-  }));
+  return songs;
 }
 
 export async function getMostPlayed(limit = 20): Promise<Song[]> {
   const songs = await db.songs.orderBy('playCount').reverse().limit(limit).toArray();
-
-  return songs.map((song) => ({
-    ...song,
-    filePath: createAudioUrl(song),
-  }));
+  return songs;
 }
 
 export async function searchSongs(query: string): Promise<Song[]> {
@@ -186,10 +235,7 @@ export async function searchSongs(query: string): Promise<Song[]> {
     )
     .toArray();
 
-  return songs.map((song) => ({
-    ...song,
-    filePath: createAudioUrl(song),
-  }));
+  return songs;
 }
 
 

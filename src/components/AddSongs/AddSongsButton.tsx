@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Button, Spinner } from '@fluentui/react-components';
 import { FolderAdd24Regular, ArrowSync24Regular } from '@fluentui/react-icons';
 import { Song } from '../../types';
-import { addSong } from '../../db/database';
+import { addSongsBulk } from '../../db/database';
 import {
   addWatchedFolder,
   getWatchedFolderByName,
@@ -14,6 +14,9 @@ import {
 } from '../../db/watchedFolders';
 import { extractMetadataFromBuffer } from '../../utils/audioMetadata';
 import { useToast } from '../Toast/ToastProvider';
+
+// Process files in parallel batches for faster indexing
+const BATCH_SIZE = 10;
 
 interface AddSongsButtonProps {
   onSongsAdded: () => void;
@@ -36,13 +39,30 @@ function isAudioFile(fileName: string): boolean {
   return AUDIO_EXTENSIONS.includes(ext);
 }
 
-async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as ArrayBuffer);
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
+// Read only first 256KB for metadata (much faster than full file)
+const METADATA_CHUNK_SIZE = 256 * 1024;
+
+async function readFileMetadataChunk(file: File): Promise<ArrayBuffer> {
+  // Read only what we need for metadata
+  const chunk = file.slice(0, METADATA_CHUNK_SIZE);
+  return chunk.arrayBuffer();
+}
+
+// Process batch of files in parallel
+async function processBatch<T>(
+  items: T[],
+  processor: (item: T) => Promise<Song | null>,
+  batchSize: number
+): Promise<Song[]> {
+  const results: Song[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(processor));
+    for (const r of batchResults) {
+      if (r !== null) results.push(r);
+    }
+  }
+  return results;
 }
 
 
@@ -91,13 +111,20 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
 
       setProgress({ current: 0, total: newFiles.length, skipped: skippedCount });
 
-      let addedCount = 0;
-      for (const file of newFiles) {
-        try {
-          const audioData = new Uint8Array(file.data).buffer;
-          const metadata = await extractMetadataFromBuffer(audioData, file.name);
+      // Process files in parallel batches
+      let processedCount = 0;
+      const songs: Song[] = [];
 
-          const song: Song = {
+      const processFile = async (file: AudioFileFromRust): Promise<Song | null> => {
+        try {
+          // Data already limited to 256KB from Rust
+          const metadataBuffer = new Uint8Array(file.data).buffer;
+          const metadata = await extractMetadataFromBuffer(metadataBuffer, file.name);
+
+          processedCount++;
+          setProgress({ current: processedCount, total: newFiles.length, skipped: skippedCount });
+
+          return {
             id: crypto.randomUUID(),
             title: metadata.title,
             artist: metadata.artist,
@@ -105,21 +132,25 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
             duration: metadata.duration,
             genre: metadata.genre,
             coverUrl: metadata.coverUrl,
-            filePath: file.path,
+            filePath: '',
             originalPath: file.path,
-            audioData,
             addedAt: Date.now(),
             playCount: 0,
             folderId,
             fileName: file.name,
           };
-
-          await addSong(song);
-          addedCount++;
-          setProgress({ current: addedCount, total: newFiles.length, skipped: skippedCount });
         } catch (err) {
           console.error(`Error processing ${file.name}:`, err);
+          return null;
         }
+      };
+
+      const processedSongs = await processBatch(newFiles, processFile, BATCH_SIZE);
+      songs.push(...processedSongs);
+
+      // Bulk insert all songs at once
+      if (songs.length > 0) {
+        await addSongsBulk(songs);
       }
 
       const totalSongs = await countSongsInFolder(folderId);
@@ -127,9 +158,9 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
       await updateFolderScanTime(folderId);
 
       if (skippedCount > 0) {
-        showSuccess(`נוספו ${addedCount} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
+        showSuccess(`נוספו ${songs.length} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
       } else {
-        showSuccess(`נוספו ${addedCount} שירים`, 'הושלם');
+        showSuccess(`נוספו ${songs.length} שירים`, 'הושלם');
       }
 
       onSongsAdded();
@@ -199,16 +230,22 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
 
     setProgress({ current: 0, total: newFiles.length, skipped: skippedCount });
 
-    let addedCount = 0;
-    for (const file of newFiles) {
-      try {
-        const audioData = await fileToArrayBuffer(file);
-        const metadata = await extractMetadataFromBuffer(audioData, file.name);
+    // Process files in parallel batches
+    let processedCount = 0;
+    const finalFolderId = currentFolderId!;
 
-        // Get original file path if available
+    const processFile = async (file: File): Promise<Song | null> => {
+      try {
+        // Read only first 256KB for metadata (much faster!)
+        const metadataBuffer = await readFileMetadataChunk(file);
+        const metadata = await extractMetadataFromBuffer(metadataBuffer, file.name);
+
         const originalPath = (file as any).path || '';
 
-        const song: Song = {
+        processedCount++;
+        setProgress({ current: processedCount, total: newFiles.length, skipped: skippedCount });
+
+        return {
           id: crypto.randomUUID(),
           title: metadata.title,
           artist: metadata.artist,
@@ -218,29 +255,32 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
           coverUrl: metadata.coverUrl,
           filePath: '',
           originalPath,
-          audioData,
           addedAt: Date.now(),
           playCount: 0,
-          folderId: currentFolderId,
+          folderId: finalFolderId,
           fileName: file.name,
         };
-
-        await addSong(song);
-        addedCount++;
-        setProgress({ current: addedCount, total: newFiles.length, skipped: skippedCount });
       } catch (err) {
         console.error(`Error processing ${file.name}:`, err);
+        return null;
       }
+    };
+
+    const songs = await processBatch(newFiles, processFile, BATCH_SIZE);
+
+    // Bulk insert all songs at once
+    if (songs.length > 0) {
+      await addSongsBulk(songs);
     }
 
-    const totalSongs = await countSongsInFolder(currentFolderId!);
-    await updateFolderSongCount(currentFolderId!, totalSongs);
-    await updateFolderScanTime(currentFolderId!);
+    const totalSongs = await countSongsInFolder(finalFolderId);
+    await updateFolderSongCount(finalFolderId, totalSongs);
+    await updateFolderScanTime(finalFolderId);
 
     if (skippedCount > 0) {
-      showSuccess(`נוספו ${addedCount} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
+      showSuccess(`נוספו ${songs.length} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
     } else {
-      showSuccess(`נוספו ${addedCount} שירים`, 'הושלם');
+      showSuccess(`נוספו ${songs.length} שירים`, 'הושלם');
     }
   };
 
