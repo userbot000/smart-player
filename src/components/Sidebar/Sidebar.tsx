@@ -17,6 +17,8 @@ import {
   Album24Filled,
   Person24Regular,
   Person24Filled,
+  MusicNote224Regular,
+  MusicNote224Filled,
   Navigation24Regular,
   Dismiss24Regular,
   Wrench24Regular,
@@ -24,7 +26,7 @@ import {
 } from '@fluentui/react-icons';
 import './Sidebar.css';
 
-export type ViewType = 'home' | 'library' | 'albums' | 'artists' | 'downloads' | 'history' | 'favorites' | 'tools' | 'settings';
+export type ViewType = 'home' | 'library' | 'albums' | 'artists' | 'playlists' | 'downloads' | 'history' | 'favorites' | 'tools' | 'settings';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -36,6 +38,7 @@ const navItems: { id: ViewType; label: string; icon: ReactElement; activeIcon: R
   { id: 'library', label: 'ספרייה', icon: <Library24Regular />, activeIcon: <Library24Filled /> },
   { id: 'albums', label: 'אלבומים', icon: <Album24Regular />, activeIcon: <Album24Filled /> },
   { id: 'artists', label: 'אמנים', icon: <Person24Regular />, activeIcon: <Person24Filled /> },
+  { id: 'playlists', label: 'רשימות השמעה', icon: <MusicNote224Regular />, activeIcon: <MusicNote224Filled /> },
   { id: 'downloads', label: 'הורדות', icon: <ArrowDownload24Regular />, activeIcon: <ArrowDownload24Filled /> },
   { id: 'history', label: 'היסטוריה', icon: <History24Regular />, activeIcon: <History24Filled /> },
   { id: 'favorites', label: 'מועדפים', icon: <Heart24Regular />, activeIcon: <Heart24Filled /> },

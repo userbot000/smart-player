@@ -8,9 +8,10 @@ import {
 
 import { Sidebar, PlayerControls } from './components';
 import { ToastProvider } from './components/Toast/ToastProvider';
-import { HomeView, LibraryView, AlbumsView, ArtistsView, DownloadsView, SettingsView, ToolsView } from './views';
+import { HomeView, LibraryView, AlbumsView, ArtistsView, PlaylistsView, DownloadsView, SettingsView, ToolsView } from './views';
 import { Song, DownloadTask } from './types';
 import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences, getPlayerState, savePlayerState, addSong, ThemeMode } from './db/database';
+import type { ViewType as SidebarViewType } from './components/Sidebar/Sidebar';
 import { usePlayerStore } from './store/playerStore';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
@@ -18,7 +19,7 @@ import { extractMetadataFromBuffer } from './utils/audioMetadata';
 
 import './styles/index.css';
 
-type ViewType = 'home' | 'library' | 'albums' | 'artists' | 'downloads' | 'history' | 'favorites' | 'tools' | 'settings';
+type ViewType = SidebarViewType;
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -501,6 +502,9 @@ function App() {
 
       case 'artists':
         return <ArtistsView songs={songs} onToggleFavorite={handleToggleFavorite} />;
+
+      case 'playlists':
+        return <PlaylistsView />;
 
       case 'downloads':
         return (

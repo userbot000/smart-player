@@ -154,3 +154,9 @@
   margin-bottom: var(--space-md);
   opacity: 0.5;
 }
+
+/* Menu Button - Always visible */
+.song-item__menu-button {
+  opacity: 1 !important;
+  visibility: visible !important;
+}

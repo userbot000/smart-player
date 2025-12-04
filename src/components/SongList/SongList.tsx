@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Input, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components';
+import { useState, useMemo, useEffect } from 'react';
+import { Input, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, MenuDivider } from '@fluentui/react-components';
 import {
   Search24Regular,
   Play24Filled,
@@ -8,10 +8,13 @@ import {
   MusicNote224Regular,
   Heart24Regular,
   Heart24Filled,
+  Add24Regular,
 } from '@fluentui/react-icons';
-import { Song } from '../../types';
+import { Song, Playlist } from '../../types';
 import { usePlayerStore } from '../../store/playerStore';
 import { formatTime } from '../../utils/formatTime';
+import { getAllPlaylists, addSongToPlaylist } from '../../db/database';
+import { useToast } from '../Toast/ToastProvider';
 import './SongList.css';
 
 interface SongListProps {
@@ -20,11 +23,32 @@ interface SongListProps {
   onToggleFavorite?: (id: string) => void;
   title?: string;
   showSearch?: boolean;
+  showMenu?: boolean;
 }
 
-export function SongList({ songs, onDelete, onToggleFavorite, title, showSearch = true }: SongListProps) {
+export function SongList({ songs, onDelete, onToggleFavorite, title, showSearch = true, showMenu = true }: SongListProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const { currentSong, setSong, setQueue, setQueueIndex, setPlaying } = usePlayerStore();
+  const { showSuccess, showError } = useToast();
+
+  useEffect(() => {
+    loadPlaylists();
+  }, []);
+
+  const loadPlaylists = async () => {
+    const data = await getAllPlaylists();
+    setPlaylists(data);
+  };
+
+  const handleAddToPlaylist = async (songId: string, playlistId: string) => {
+    try {
+      await addSongToPlaylist(playlistId, songId);
+      showSuccess('השיר נוסף לרשימת ההשמעה');
+    } catch (error) {
+      showError('שגיאה בהוספת השיר');
+    }
+  };
 
   const filteredSongs = useMemo(() => {
     if (!searchQuery) return songs;
@@ -109,41 +133,72 @@ export function SongList({ songs, onDelete, onToggleFavorite, title, showSearch 
 
               <span className="song-item__duration">{formatTime(song.duration)}</span>
 
-              <Menu>
-                <MenuTrigger disableButtonEnhancement>
-                  <Button
-                    appearance="subtle"
-                    icon={<MoreVertical24Regular />}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </MenuTrigger>
-                <MenuPopover>
-                  <MenuList>
-                    {onToggleFavorite && (
-                      <MenuItem
-                        icon={song.isFavorite ? <Heart24Filled /> : <Heart24Regular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleFavorite(song.id);
-                        }}
-                      >
-                        {song.isFavorite ? 'הסר ממועדפים' : 'הוסף למועדפים'}
-                      </MenuItem>
-                    )}
-                    {onDelete && (
-                      <MenuItem
-                        icon={<Delete24Regular />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(song.id);
-                        }}
-                      >
-                        מחק
-                      </MenuItem>
-                    )}
-                  </MenuList>
-                </MenuPopover>
-              </Menu>
+              {showMenu && (
+                <Menu>
+                  <MenuTrigger disableButtonEnhancement>
+                    <Button
+                      appearance="subtle"
+                      icon={<MoreVertical24Regular />}
+                      onClick={(e) => e.stopPropagation()}
+                      className="song-item__menu-button"
+                    />
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      {onToggleFavorite && (
+                        <MenuItem
+                          icon={song.isFavorite ? <Heart24Filled /> : <Heart24Regular />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite(song.id);
+                          }}
+                        >
+                          {song.isFavorite ? 'הסר ממועדפים' : 'הוסף למועדפים'}
+                        </MenuItem>
+                      )}
+                      {playlists.length > 0 && (
+                        <>
+                          <MenuDivider />
+                          <Menu>
+                            <MenuTrigger disableButtonEnhancement>
+                              <MenuItem icon={<Add24Regular />}>הוסף לרשימת השמעה</MenuItem>
+                            </MenuTrigger>
+                            <MenuPopover>
+                              <MenuList>
+                                {playlists.map((playlist) => (
+                                  <MenuItem
+                                    key={playlist.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddToPlaylist(song.id, playlist.id);
+                                    }}
+                                  >
+                                    {playlist.name}
+                                  </MenuItem>
+                                ))}
+                              </MenuList>
+                            </MenuPopover>
+                          </Menu>
+                        </>
+                      )}
+                      {onDelete && (
+                        <>
+                          <MenuDivider />
+                          <MenuItem
+                            icon={<Delete24Regular />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(song.id);
+                            }}
+                          >
+                            מחק
+                          </MenuItem>
+                        </>
+                      )}
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
+              )}
             </div>
           ))}
         </div>

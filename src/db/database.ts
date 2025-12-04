@@ -357,3 +357,58 @@ export async function getPlayerState(): Promise<PlayerResumeState> {
 export async function savePlayerState(state: Omit<PlayerResumeState, 'id'>): Promise<void> {
   await db.playerState.put({ id: 'player_state', ...state });
 }
+
+// ============ Playlists ============
+export async function getAllPlaylists(): Promise<Playlist[]> {
+  return db.playlists.orderBy('updatedAt').reverse().toArray();
+}
+
+export async function getPlaylist(id: string): Promise<Playlist | undefined> {
+  return db.playlists.get(id);
+}
+
+export async function createPlaylist(name: string): Promise<string> {
+  const playlist: Playlist = {
+    id: crypto.randomUUID(),
+    name,
+    songIds: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  return db.playlists.add(playlist);
+}
+
+export async function updatePlaylist(id: string, updates: Partial<Omit<Playlist, 'id'>>): Promise<number> {
+  return db.playlists.update(id, { ...updates, updatedAt: Date.now() });
+}
+
+export async function deletePlaylist(id: string): Promise<void> {
+  return db.playlists.delete(id);
+}
+
+export async function addSongToPlaylist(playlistId: string, songId: string): Promise<void> {
+  const playlist = await db.playlists.get(playlistId);
+  if (playlist && !playlist.songIds.includes(songId)) {
+    playlist.songIds.push(songId);
+    await db.playlists.update(playlistId, { songIds: playlist.songIds, updatedAt: Date.now() });
+  }
+}
+
+export async function removeSongFromPlaylist(playlistId: string, songId: string): Promise<void> {
+  const playlist = await db.playlists.get(playlistId);
+  if (playlist) {
+    playlist.songIds = playlist.songIds.filter(id => id !== songId);
+    await db.playlists.update(playlistId, { songIds: playlist.songIds, updatedAt: Date.now() });
+  }
+}
+
+export async function getPlaylistSongs(playlistId: string): Promise<Song[]> {
+  const playlist = await db.playlists.get(playlistId);
+  if (!playlist) return [];
+  
+  const songs = await Promise.all(
+    playlist.songIds.map(id => db.songs.get(id))
+  );
+  
+  return songs.filter((song): song is Song => song !== undefined);
+}
