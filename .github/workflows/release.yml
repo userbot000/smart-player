@@ -1,0 +1,208 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Smart Player ${{ steps.get_version.outputs.version }}
+          body: |
+            ## Smart Player ${{ steps.get_version.outputs.version }}
+            
+            ### הורדות
+            - **Windows**: הורד את קובץ ההתקנה (NSIS) או הגרסה הניידת (Portable)
+            - **Android**: הורד את קובץ ה-APK והתקן על המכשיר
+            
+            ### שינויים
+            ראה את רשימת השינויים המלאה בקוד המקור.
+            
+            ---
+            
+            **הערה**: עבור Windows, מומלץ להשתמש בקובץ ההתקנה (NSIS) לחוויה מלאה.
+          draft: false
+          prerelease: false
+
+  build-windows:
+    needs: create-release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Build Tauri app
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Upload NSIS Installer to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: src-tauri/target/release/bundle/nsis/Smart Player_${{ needs.create-release.outputs.version }}_x64-setup.exe
+          asset_name: Smart-Player-${{ needs.create-release.outputs.version }}-Windows-Installer.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload MSI Installer to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: src-tauri/target/release/bundle/msi/Smart Player_${{ needs.create-release.outputs.version }}_x64_en-US.msi
+          asset_name: Smart-Player-${{ needs.create-release.outputs.version }}-Windows.msi
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+
+      - name: Upload Portable EXE to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: src-tauri/target/release/smart-player.exe
+          asset_name: Smart-Player-${{ needs.create-release.outputs.version }}-Windows-Portable.exe
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+
+  build-android:
+    needs: create-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Android targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add x86_64-linux-android
+          rustup target add i686-linux-android
+
+      - name: Setup Android SDK & NDK
+        run: |
+          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Build Android APK
+        run: npm run tauri android build --apk
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Find APK files
+        id: find_apk
+        run: |
+          APK_ARM64=$(find src-tauri/gen/android/app/build/outputs/apk -name "*arm64-v8a*.apk" | head -n 1)
+          APK_ARMV7=$(find src-tauri/gen/android/app/build/outputs/apk -name "*armeabi-v7a*.apk" | head -n 1)
+          APK_UNIVERSAL=$(find src-tauri/gen/android/app/build/outputs/apk -name "*universal*.apk" | head -n 1)
+          echo "apk_arm64=$APK_ARM64" >> $GITHUB_OUTPUT
+          echo "apk_armv7=$APK_ARMV7" >> $GITHUB_OUTPUT
+          echo "apk_universal=$APK_UNIVERSAL" >> $GITHUB_OUTPUT
+
+      - name: Upload ARM64 APK to Release
+        if: steps.find_apk.outputs.apk_arm64 != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.find_apk.outputs.apk_arm64 }}
+          asset_name: Smart-Player-${{ needs.create-release.outputs.version }}-Android-ARM64.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload ARMv7 APK to Release
+        if: steps.find_apk.outputs.apk_armv7 != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.find_apk.outputs.apk_armv7 }}
+          asset_name: Smart-Player-${{ needs.create-release.outputs.version }}-Android-ARMv7.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload Universal APK to Release
+        if: steps.find_apk.outputs.apk_universal != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.find_apk.outputs.apk_universal }}
+          asset_name: Smart-Player-${{ needs.create-release.outputs.version }}-Android-Universal.apk
+          asset_content_type: application/vnd.android.package-archive

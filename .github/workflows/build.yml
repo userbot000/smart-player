@@ -56,7 +56,6 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
-    if: false  # Disabled until Android support is initialized
 
     steps:
       - name: Checkout
@@ -96,7 +95,7 @@ jobs:
         run: npm ci --prefer-offline --no-audit
 
       - name: Build Android APK
-        run: npm run tauri:android:build -- --apk
+        run: npm run tauri android build -- --apk
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
