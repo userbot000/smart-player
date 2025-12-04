@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -42,11 +42,14 @@
       }
     ],
     "windows": {
-      "wix": {
-        "language": "en-US",
-        "fragmentPaths": ["wix/main.wxs"],
-        "componentGroupRefs": ["ContextMenuComponents"],
-        "template": null
+      "nsis": {
+        "headerImage": null,
+        "sidebarImage": null,
+        "installerIcon": null,
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "displayLanguageSelector": false,
+        "compression": "lzma"
       }
     },
     "shortDescription": "Smart Music Player",
