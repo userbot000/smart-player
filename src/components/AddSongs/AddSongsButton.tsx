@@ -3,6 +3,7 @@ import { Button, Spinner } from '@fluentui/react-components';
 import { FolderAdd24Regular, ArrowSync24Regular } from '@fluentui/react-icons';
 import { Song } from '../../types';
 import { addSongsBulk } from '../../db/database';
+import { isTauriApp } from '../../utils/tauriDetect';
 import {
   addWatchedFolder,
   getWatchedFolderByName,
@@ -72,9 +73,8 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showWarning, showError } = useToast();
 
-  // Check if running in Tauri - check for actual Tauri API
-  const isTauri = typeof window !== 'undefined' && 
-    typeof (window as any).__TAURI_INTERNALS__ !== 'undefined';
+  // Check if running in Tauri
+  const isTauri = isTauriApp();
 
   // Rescan using Tauri - no dialog needed
   const handleRescan = async () => {

@@ -3,6 +3,7 @@
 
 import { Command } from '@tauri-apps/plugin-shell';
 import { appDataDir } from '@tauri-apps/api/path';
+import { isTauriApp } from './tauriDetect';
 
 export interface YtDownloadProgress {
   percent: number;
@@ -22,7 +23,7 @@ export interface YtDownloadResult {
 // Check if network is available
 export async function isNetworkAvailable(): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     return false;
   }
 
@@ -42,7 +43,7 @@ export async function isNetworkAvailable(): Promise<boolean> {
 // Check if yt-dlp is installed (offline check only)
 export async function isYtDlpInstalled(): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     return false;
   }
 
@@ -64,7 +65,7 @@ export async function isYtDlpInstalled(): Promise<boolean> {
 // Check if ffmpeg is installed (offline check only)
 export async function isFfmpegInstalled(): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     return false;
   }
 
@@ -88,7 +89,7 @@ export async function installYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     onProgress?.('לא ניתן להתקין - לא רץ בסביבת Tauri');
     return false;
   }
@@ -135,7 +136,7 @@ export async function updateYtDlp(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     onProgress?.('לא ניתן לעדכן - לא רץ בסביבת Tauri');
     return false;
   }
@@ -167,7 +168,7 @@ export async function installFfmpeg(
   onProgress?: (message: string) => void
 ): Promise<boolean> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     onProgress?.('לא ניתן להתקין - לא רץ בסביבת Tauri');
     return false;
   }
@@ -294,7 +295,7 @@ export async function downloadYouTubeAudio(
   onProgress?: (progress: YtDownloadProgress) => void
 ): Promise<YtDownloadResult> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     return {
       success: false,
       error: 'הורדה מיוטיוב זמינה רק בגרסת Tauri של האפליקציה'
@@ -316,7 +317,7 @@ export async function downloadYouTubeAudio(
   if (!deps.ytDlp) {
     return {
       success: false,
-      error: 'yt-dlp לא מותקן. התקן ידנית: winget install yt-dlp.yt-dlp'
+      error: 'yt-dlp לא מותקן או לא נמצא ב-PATH. אם התקנת זה עתה, הפעל מחדש את האפליקציה. אחרת התקן ידנית: winget install yt-dlp.yt-dlp'
     };
   }
 
@@ -332,23 +333,25 @@ export async function downloadYouTubeAudio(
     onProgress?.({ percent: 0, status: 'downloading', message: 'מתחיל הורדה...' });
 
     // Build yt-dlp command with progress output
-    // Use full path to yt-dlp in case PATH wasn't updated yet
-    const ytDlpPath = `$env:LOCALAPPDATA\\yt-dlp\\yt-dlp.exe`;
-    const ytDlpCmd =
-      `if (Test-Path "${ytDlpPath}") { & "${ytDlpPath}" } else { yt-dlp } ` +
-      `"${url}" ` +
-      `--no-check-certificate ` +
-      `--newline ` +              // Output progress on new lines (important for parsing)
-      `--extract-audio ` +
-      `--audio-format mp3 ` +
-      `--audio-quality 0 ` +
-      `--embed-thumbnail ` +
-      `--add-metadata ` +
-      `-o "${outputTemplate}" ` +
-      `--print after_move:filepath ` +  // Print final filepath after all processing
-      `--no-playlist`;
+    onProgress?.({ percent: 5, status: 'downloading', message: 'מפעיל yt-dlp...' });
 
-    const command = Command.create('powershell', ['-NoProfile', '-Command', ytDlpCmd]);
+    // Build the command arguments
+    const args = [
+      url,
+      '--no-check-certificate',
+      '--newline',
+      '--extract-audio',
+      '--audio-format', 'mp3',
+      '--audio-quality', '0',
+      '--embed-thumbnail',
+      '--add-metadata',
+      '-o', outputTemplate,
+      '--print', 'after_move:filepath',
+      '--no-playlist'
+    ];
+
+    // Just use yt-dlp from PATH (should work after installation)
+    const command = Command.create('yt-dlp', args);
 
     let filePath = '';
     let lastError = '';
@@ -435,7 +438,7 @@ export async function getYouTubeInfo(url: string): Promise<{
   error?: string;
 }> {
   // Check if running in Tauri
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+  if (!isTauriApp()) {
     return { error: 'זמין רק בגרסת Tauri' };
   }
 
@@ -466,5 +469,6 @@ export async function getYouTubeInfo(url: string): Promise<{
     return { error: 'שגיאה בקבלת מידע' };
   }
 }
+
 
 
