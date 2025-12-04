@@ -72,8 +72,9 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showWarning, showError } = useToast();
 
-  // Check if running in Tauri
-  const isTauri = typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
+  // Check if running in Tauri - check for actual Tauri API
+  const isTauri = typeof window !== 'undefined' && 
+    typeof (window as any).__TAURI_INTERNALS__ !== 'undefined';
 
   // Rescan using Tauri - no dialog needed
   const handleRescan = async () => {
