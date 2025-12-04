@@ -155,17 +155,8 @@ export async function installYtDlp(
     // Download yt-dlp.exe directly from GitHub releases to bin folder
     const downloadCmd = Command.create('powershell', [
       '-NoProfile',
-      '-ExecutionPolicy', 'Bypass',
       '-Command',
-      `$ErrorActionPreference = 'Stop'; ` +
-      `$binDir = "${binDir}"; ` +
-      `$ytDlpPath = "${ytDlpPath}"; ` +
-      `Write-Host "יוצר תיקייה: $binDir"; ` +
-      `New-Item -ItemType Directory -Force -Path $binDir | Out-Null; ` +
-      `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ` +
-      `Write-Host "מוריד yt-dlp..."; ` +
-      `Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile $ytDlpPath -UseBasicParsing; ` +
-      `if (Test-Path $ytDlpPath) { Write-Host "הקובץ נוצר בהצלחה"; Write-Output "OK" } else { throw "הקובץ לא נוצר" }`
+      `$ErrorActionPreference = 'Stop'; $binDir = "${binDir}"; $ytDlpPath = "${ytDlpPath}"; Write-Host "יוצר תיקייה: $binDir"; New-Item -ItemType Directory -Force -Path $binDir | Out-Null; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Write-Host "מוריד yt-dlp..."; Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile $ytDlpPath -UseBasicParsing; if (Test-Path $ytDlpPath) { Write-Host "הקובץ נוצר בהצלחה"; Write-Output "OK" } else { throw "הקובץ לא נוצר" }`
     ]);
     const result = await downloadCmd.execute();
 
@@ -228,32 +219,8 @@ export async function installFfmpeg(
     // Download ffmpeg essentials build (includes ffmpeg + ffprobe)
     const downloadCmd = Command.create('powershell', [
       '-NoProfile',
-      '-ExecutionPolicy', 'Bypass',
       '-Command',
-      `$ErrorActionPreference = 'Stop'; ` +
-      `$binDir = "${binDir}"; ` +
-      `$ffmpegPath = "${ffmpegPath}"; ` +
-      `$ffprobePath = "${ffprobePath}"; ` +
-      `Write-Host "יוצר תיקייה: $binDir"; ` +
-      `New-Item -ItemType Directory -Force -Path $binDir | Out-Null; ` +
-      `$zip = "$env:TEMP\\ffmpeg.zip"; ` +
-      `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ` +
-      `Write-Host "מוריד ffmpeg (זה עשוי לקחת זמן)..."; ` +
-      `Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile $zip -UseBasicParsing; ` +
-      `Write-Host "מחלץ קבצים..."; ` +
-      `Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force; ` +
-      `$ffmpegExe = Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\ffmpeg.exe" | Select-Object -First 1; ` +
-      `$ffprobeExe = Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\ffprobe.exe" | Select-Object -First 1; ` +
-      `if ($ffmpegExe -and $ffprobeExe) { ` +
-      `  Write-Host "מעתיק ffmpeg.exe..."; ` +
-      `  Copy-Item $ffmpegExe.FullName -Destination $ffmpegPath -Force; ` +
-      `  Write-Host "מעתיק ffprobe.exe..."; ` +
-      `  Copy-Item $ffprobeExe.FullName -Destination $ffprobePath -Force; ` +
-      `  Write-Host "מנקה קבצים זמניים..."; ` +
-      `  Remove-Item $zip -Force -ErrorAction SilentlyContinue; ` +
-      `  Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build" -Recurse | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue; ` +
-      `  if ((Test-Path $ffmpegPath) -and (Test-Path $ffprobePath)) { Write-Host "הקבצים נוצרו בהצלחה"; Write-Output "OK" } else { throw "הקבצים לא נוצרו" } ` +
-      `} else { throw "לא נמצאו ffmpeg.exe או ffprobe.exe בארכיון" }`
+      `$ErrorActionPreference = 'Stop'; $binDir = "${binDir}"; $ffmpegPath = "${ffmpegPath}"; $ffprobePath = "${ffprobePath}"; Write-Host "יוצר תיקייה: $binDir"; New-Item -ItemType Directory -Force -Path $binDir | Out-Null; $zip = "$env:TEMP\\ffmpeg.zip"; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Write-Host "מוריד ffmpeg..."; Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile $zip -UseBasicParsing; Write-Host "מחלץ קבצים..."; Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force; $ffmpegExe = Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\ffmpeg.exe" | Select-Object -First 1; $ffprobeExe = Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\ffprobe.exe" | Select-Object -First 1; if ($ffmpegExe -and $ffprobeExe) { Copy-Item $ffmpegExe.FullName -Destination $ffmpegPath -Force; Copy-Item $ffprobeExe.FullName -Destination $ffprobePath -Force; Remove-Item $zip -Force -ErrorAction SilentlyContinue; if ((Test-Path $ffmpegPath) -and (Test-Path $ffprobePath)) { Write-Output "OK" } else { throw "הקבצים לא נוצרו" } } else { throw "לא נמצאו ffmpeg.exe בארכיון" }`
     ]);
     const result = await downloadCmd.execute();
 
@@ -460,21 +427,14 @@ export async function downloadYouTubeAudio(
       .replace(/^https?:\/\//, '')
       .replace(/^www\./, '');
 
-    // Build simple PowerShell command that runs from bin directory
-    const psCommand = `
-      Set-Location '${binDir}'
-      .\\yt-dlp.exe '${simplifiedUrl}' --ffmpeg-location '.' --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o '${outputTemplate}' --print "after_move:filepath" --no-playlist
-    `;
-
     console.log('Running yt-dlp from bin directory');
     console.log('Simplified URL:', simplifiedUrl);
 
-    // Run yt-dlp via PowerShell from bin directory
+    // Run yt-dlp via PowerShell - simple command
     const command = Command.create('powershell', [
       '-NoProfile',
-      '-ExecutionPolicy', 'Bypass',
       '-Command',
-      psCommand
+      `Set-Location '${binDir}'; .\\yt-dlp.exe '${simplifiedUrl}' --ffmpeg-location '.' --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o '${outputTemplate}' --print after_move:filepath --no-playlist`
     ]);
 
     let filePath = '';
@@ -582,21 +542,10 @@ export async function downloadYouTubeAudio(
         console.error('Failed to spawn yt-dlp command:', err);
         const errorMessage = err instanceof Error ? err.message : String(err);
         
-        // Provide more helpful error messages
-        let userError = 'שגיאה בהפעלת yt-dlp';
-        if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
-          userError = 'אין הרשאה להפעיל פקודות. נסה להפעיל מחדש את האפליקציה.';
-        } else if (errorMessage.includes('not found') || errorMessage.includes('No such file')) {
-          userError = 'yt-dlp לא נמצא. לחץ על "עדכן" כדי להתקין.';
-        } else if (errorMessage.includes('program not allowed')) {
-          userError = 'הפקודה לא מורשית. נסה להפעיל מחדש את האפליקציה.';
-        } else if (errorMessage) {
-          userError = `שגיאה: ${errorMessage}`;
-        }
-        
+        // Show the actual error for debugging
         resolve({
           success: false,
-          error: userError
+          error: `שגיאה בהפעלת yt-dlp: ${errorMessage}`
         });
       });
     });
