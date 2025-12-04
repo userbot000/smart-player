@@ -49,8 +49,12 @@
 
 ### Windows
 הורד את קובץ ההתקנה מ-[Releases](../../releases/latest):
-- **NSIS Installer** (מומלץ) - התקנה מלאה עם file associations
-- **Portable EXE** - גרסה ניידת ללא התקנה
+- **NSIS Installer** (מומלץ) - התקנה מלאה עם file associations + WebView2
+- **Portable EXE** - גרסה ניידת (דורש WebView2 מותקן)
+
+⚠️ **חשוב**: 
+- אם האפליקציה לא נפתחת → ראה [TROUBLESHOOTING.md](TROUBLESHOOTING.md#-האפליקציה-לא-נפתחת--מסך-שחור)
+- התקנה ללא אינטרנט → ראה [OFFLINE_INSTALL.md](OFFLINE_INSTALL.md)
 
 ### Android
 
@@ -90,10 +94,16 @@ npm run tauri build
 
 ## 📖 תיעוד
 
-- **[QUICK_START_ANDROID.md](QUICK_START_ANDROID.md)** - 🚀 בניית Android ב-GitHub (מומלץ!)
-- **[CHECKLIST.md](CHECKLIST.md)** - מצב מוכנות הפרויקט
+### למשתמשים
+- **[OFFLINE_INSTALL.md](OFFLINE_INSTALL.md)** - 📦 התקנה ללא אינטרנט
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - 🔧 פתרון בעיות נפוצות
+
+### למפתחים
+- **[QUICK_START_ANDROID.md](QUICK_START_ANDROID.md)** - 🚀 בניית Android ב-GitHub
 - **[ANDROID_SETUP.md](ANDROID_SETUP.md)** - הכנה מקומית לאנדרואיד
 - **[.github/RELEASE.md](.github/RELEASE.md)** - מדריך יצירת releases
+- **[CHECKLIST.md](CHECKLIST.md)** - מצב מוכנות הפרויקט
+- **[CHANGELOG.md](CHANGELOG.md)** - היסטוריית שינויים
 
 ## 🏗️ טכנולוגיות
 

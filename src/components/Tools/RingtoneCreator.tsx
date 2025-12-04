@@ -58,6 +58,26 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
     }
   }, [selectedSong]);
 
+  // Load audio URL when song changes
+  useEffect(() => {
+    if (!selectedSong || !audioRef.current) return;
+
+    const loadAudio = async () => {
+      if (!audioRef.current) return;
+      
+      // Get audio URL (will load from disk if needed)
+      const { createAudioUrlAsync } = await import('../../db/database');
+      const url = await createAudioUrlAsync(selectedSong);
+      
+      if (url && audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.load();
+      }
+    };
+
+    loadAudio();
+  }, [selectedSong]);
+
   // Handle audio playback
   useEffect(() => {
     if (!audioRef.current || !selectedSong) return;
@@ -73,8 +93,20 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
       }
     };
 
+    const handleLoadedMetadata = () => {
+      // Update duration if it was unknown
+      if (audio.duration && audio.duration !== Infinity) {
+        setSelectedSong(prev => prev ? { ...prev, duration: audio.duration } : null);
+      }
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    return () => audio.removeEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
   }, [startTime, endTime, selectedSong]);
 
 
@@ -186,16 +218,37 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
   };
 
   const handleCreateRingtone = async () => {
-    if (!selectedSong || !selectedSong.audioData) {
-      showError('לא נמצא קובץ אודיו לשיר זה');
+    if (!selectedSong) {
+      showError('לא נבחר שיר');
       return;
     }
 
     setIsCreating(true);
 
     try {
+      // Load audio data if not already loaded
+      let audioData: ArrayBuffer | undefined = selectedSong.audioData;
+      
+      if (!audioData && selectedSong.originalPath) {
+        // Read from disk using Tauri
+        const { readAudioFile } = await import('../../db/database');
+        const loadedData = await readAudioFile(selectedSong.originalPath);
+        
+        if (!loadedData) {
+          showError('לא ניתן לקרוא את קובץ האודיו');
+          return;
+        }
+        
+        audioData = loadedData;
+      }
+      
+      if (!audioData) {
+        showError('לא נמצא קובץ אודיו לשיר זה');
+        return;
+      }
+
       await createRingtone(
-        selectedSong.audioData,
+        audioData,
         startTime,
         endTime,
         `${ringtoneTitle}.wav`
@@ -229,11 +282,30 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
       if (selected && typeof selected === 'string') {
         // Create temporary song object
         const fileName = selected.split(/[/\\]/).pop() || 'Unknown';
+        
+        // Try to load metadata from file
+        let title = fileName.replace(/\.[^.]+$/, '');
+        let duration = 180; // Default
+        
+        try {
+          const { readAudioFile } = await import('../../db/database');
+          const { extractMetadataFromBuffer } = await import('../../utils/audioMetadata');
+          
+          const audioData = await readAudioFile(selected);
+          if (audioData) {
+            const meta = await extractMetadataFromBuffer(audioData, fileName);
+            title = meta.title || title;
+            duration = meta.duration || duration;
+          }
+        } catch (err) {
+          console.warn('Could not extract metadata:', err);
+        }
+        
         const tempSong: Song = {
           id: 'temp-' + Date.now(),
-          title: fileName.replace(/\.[^.]+$/, ''),
+          title,
           artist: 'קובץ מקומי',
-          duration: 180, // Default, will be updated when audio loads
+          duration,
           filePath: selected,
           originalPath: selected,
           addedAt: Date.now(),
@@ -272,7 +344,7 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
 
       {selectedSong && (
         <>
-          <audio ref={audioRef} src={selectedSong.filePath} preload="metadata" />
+          <audio ref={audioRef} preload="metadata" />
 
           <div className="ringtone-creator__section">
             <Label>שם הרינגטון</Label>

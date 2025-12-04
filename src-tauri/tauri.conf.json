@@ -53,6 +53,10 @@
       }
     ],
     "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
       "nsis": {
         "headerImage": null,
         "sidebarImage": null,

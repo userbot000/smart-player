@@ -134,17 +134,38 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
   };
 
   const handleExportWithTags = async () => {
-    if (!selectedSong || !selectedSong.audioData) {
-      showError('לא נמצא קובץ אודיו לשיר זה');
+    if (!selectedSong) {
+      showError('לא נבחר שיר');
       return;
     }
 
     setIsSaving(true);
 
     try {
+      // Load audio data if not already loaded
+      let audioData: ArrayBuffer | undefined = selectedSong.audioData;
+      
+      if (!audioData && selectedSong.originalPath) {
+        // Read from disk using Tauri
+        const { readAudioFile } = await import('../../db/database');
+        const loadedData = await readAudioFile(selectedSong.originalPath);
+        
+        if (!loadedData) {
+          showError('לא ניתן לקרוא את קובץ האודיו');
+          return;
+        }
+        
+        audioData = loadedData;
+      }
+      
+      if (!audioData) {
+        showError('לא נמצא קובץ אודיו לשיר זה');
+        return;
+      }
+
       const fileName = `${metadata.title} - ${metadata.artist}.mp3`;
       await updateAndSaveWithTags(
-        selectedSong.audioData,
+        audioData,
         { ...metadata, coverImage: coverImageData || undefined },
         fileName,
         selectedSong.originalPath
@@ -183,25 +204,55 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
       if (selected && typeof selected === 'string') {
         // Create temporary song object
         const fileName = selected.split(/[/\\]/).pop() || 'Unknown';
+        
+        // Try to load metadata from file
+        let title = fileName.replace(/\.[^.]+$/, '');
+        let artist = 'קובץ מקומי';
+        let album = '';
+        let genre = '';
+        let duration = 0;
+        let cover: string | undefined;
+        
+        try {
+          const { readAudioFile } = await import('../../db/database');
+          const { extractMetadataFromBuffer } = await import('../../utils/audioMetadata');
+          
+          const audioData = await readAudioFile(selected);
+          if (audioData) {
+            const meta = await extractMetadataFromBuffer(audioData, fileName);
+            title = meta.title || title;
+            artist = meta.artist || artist;
+            album = meta.album || '';
+            genre = meta.genre || '';
+            duration = meta.duration || 0;
+            cover = meta.coverUrl;
+          }
+        } catch (err) {
+          console.warn('Could not extract metadata:', err);
+        }
+        
         const tempSong: Song = {
           id: 'temp-' + Date.now(),
-          title: fileName.replace(/\.[^.]+$/, ''),
-          artist: 'קובץ מקומי',
-          duration: 0,
+          title,
+          artist,
+          album,
+          genre,
+          duration,
           filePath: selected,
           originalPath: selected,
+          coverUrl: cover,
           addedAt: Date.now(),
           playCount: 0,
           isFavorite: false,
         };
         setSelectedSong(tempSong);
         setMetadata({
-          title: tempSong.title,
-          artist: tempSong.artist,
-          album: '',
-          genre: '',
+          title,
+          artist,
+          album,
+          genre,
         });
-        setCoverImage(null);
+        setCoverImage(cover || null);
         setCoverImageData(null);
         setHasChanges(false);
       }
@@ -339,7 +390,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
               appearance="primary"
               icon={<Save24Regular />}
               onClick={handleExportWithTags}
-              disabled={!selectedSong?.audioData || isSaving || !hasChanges}
+              disabled={!selectedSong || isSaving || !hasChanges}
             >
               {isSaving ? 'שומר...' : 'עדכן תגיות'}
             </Button>
