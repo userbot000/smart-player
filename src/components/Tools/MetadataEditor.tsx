@@ -47,11 +47,16 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
   const { showSuccess, showError } = useToast();
 
   // Set initial song if provided - load fresh metadata from file!
+  // Track the last loaded initialSong id to avoid reloading the same song
+  const lastLoadedInitialSongRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (initialSong && !selectedSong) {
+    // Load initialSong if it's new (different from what we already loaded)
+    if (initialSong && initialSong.id !== lastLoadedInitialSongRef.current) {
       const loadInitialSong = async () => {
         setIsLoadingSong(true);
-        
+        lastLoadedInitialSongRef.current = initialSong.id;
+
         try {
           // Load fresh metadata from the actual file
           let freshMetadata = {
@@ -62,18 +67,18 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
           };
           let freshCover: string | null = initialSong.coverUrl || null;
           let freshCoverData: ArrayBuffer | null = null;
-          
+
           // Try to load metadata from file if we have a path
           if (initialSong.originalPath) {
             try {
               const { readAudioFile } = await import('../../db/database');
               const { extractMetadataFromBuffer } = await import('../../utils/audioMetadata');
-              
+
               const audioData = await readAudioFile(initialSong.originalPath);
               if (audioData) {
                 const fileName = initialSong.originalPath.split(/[/\\]/).pop() || 'Unknown';
                 const meta = await extractMetadataFromBuffer(audioData, fileName);
-                
+
                 // Use fresh metadata from file
                 freshMetadata = {
                   title: meta.title || initialSong.title,
@@ -81,7 +86,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
                   album: meta.album || initialSong.album || '',
                   genre: meta.genre || initialSong.genre || '',
                 };
-                
+
                 if (meta.coverUrl) {
                   freshCover = meta.coverUrl;
                 }
@@ -90,14 +95,14 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
               console.warn('Could not load fresh metadata, using cached:', err);
             }
           }
-          
+
           setSelectedSong(initialSong);
           setMetadata(freshMetadata);
-          
+
           // Load cover image and convert to ArrayBuffer if exists
           if (freshCover) {
             setCoverImage(freshCover);
-            
+
             // Convert data URL to ArrayBuffer for saving
             try {
               if (freshCover.startsWith('data:')) {
@@ -112,8 +117,10 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
             } catch (err) {
               console.error('Failed to convert cover image:', err);
             }
+          } else {
+            setCoverImage(null);
           }
-          
+
           setCoverImageData(freshCoverData);
           setHasChanges(false);
         } catch (err) {
@@ -123,17 +130,17 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
           setIsLoadingSong(false);
         }
       };
-      
+
       loadInitialSong();
     }
-  }, [initialSong, selectedSong, showError]);
+  }, [initialSong, showError]);
 
   const handleSongSelect = async (songId: string) => {
     const song = songs.find((s) => s.id === songId);
     if (!song) return;
-    
+
     setIsLoadingSong(true);
-    
+
     try {
       setSelectedSong(song);
       setMetadata({
@@ -142,11 +149,11 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         album: song.album || '',
         genre: song.genre || '',
       });
-      
+
       // Load cover image and convert to ArrayBuffer if exists
       if (song.coverUrl) {
         setCoverImage(song.coverUrl);
-        
+
         // Convert data URL to ArrayBuffer for saving
         try {
           if (song.coverUrl.startsWith('data:')) {
@@ -168,7 +175,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         setCoverImage(null);
         setCoverImageData(null);
       }
-      
+
       setHasChanges(false);
     } catch (err) {
       console.error('Error loading song:', err);
@@ -196,18 +203,18 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       setCoverImage(dataUrl);
-      
+
       // Also store as ArrayBuffer for ID3 tag
       const arrayReader = new FileReader();
       arrayReader.onload = (e) => {
         setCoverImageData(e.target?.result as ArrayBuffer);
       };
       arrayReader.readAsArrayBuffer(file);
-      
+
       setHasChanges(true);
     };
     reader.readAsDataURL(file);
-    
+
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -245,20 +252,20 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
     try {
       // Load audio data if not already loaded
       let audioData: ArrayBuffer | undefined = selectedSong.audioData;
-      
+
       if (!audioData && selectedSong.originalPath) {
         // Read from disk using Tauri
         const { readAudioFile } = await import('../../db/database');
         const loadedData = await readAudioFile(selectedSong.originalPath);
-        
+
         if (!loadedData) {
           showError('לא ניתן לקרוא את קובץ האודיו');
           return;
         }
-        
+
         audioData = loadedData;
       }
-      
+
       if (!audioData) {
         showError('לא נמצא קובץ אודיו לשיר זה');
         return;
@@ -271,7 +278,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         fileName,
         selectedSong.originalPath
       );
-      
+
       if (selectedSong.originalPath) {
         showSuccess('התגיות נשמרו בקובץ המקורי!');
       } else {
@@ -305,7 +312,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
       if (selected && typeof selected === 'string') {
         // Create temporary song object
         const fileName = selected.split(/[/\\]/).pop() || 'Unknown';
-        
+
         // Try to load metadata from file
         let title = fileName.replace(/\.[^.]+$/, '');
         let artist = 'קובץ מקומי';
@@ -313,11 +320,11 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         let genre = '';
         let duration = 0;
         let cover: string | undefined;
-        
+
         try {
           const { readAudioFile } = await import('../../db/database');
           const { extractMetadataFromBuffer } = await import('../../utils/audioMetadata');
-          
+
           const audioData = await readAudioFile(selected);
           if (audioData) {
             const meta = await extractMetadataFromBuffer(audioData, fileName);
@@ -331,7 +338,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
         } catch (err) {
           console.warn('Could not extract metadata:', err);
         }
-        
+
         const tempSong: Song = {
           id: 'temp-' + Date.now(),
           title,
@@ -399,7 +406,7 @@ export function MetadataEditor({ songs, initialSong }: MetadataEditorProps) {
           />
 
           <div className="metadata-editor__song-info">
-            <div 
+            <div
               className="metadata-editor__cover metadata-editor__cover--editable"
               onClick={() => fileInputRef.current?.click()}
               title="לחץ להחלפת תמונה"
