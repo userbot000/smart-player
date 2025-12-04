@@ -27,7 +27,8 @@ export async function isNetworkAvailable(): Promise<boolean> {
       'Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet'
     ]);
     const output = await command.execute();
-    return output.code === 0 && output.stdout.trim().toLowerCase() === 'true';
+    // Test-Connection -Quiet returns exit code 0 for success, 1 for failure
+    return output.code === 0;
   } catch {
     return false;
   }
@@ -160,17 +161,6 @@ export async function ensureDependencies(
   let ytDlp = await isYtDlpInstalled();
   let ffmpeg = await isFfmpegInstalled();
 
-  // If dependencies are missing, check network before trying to install
-  if (!ytDlp || !ffmpeg) {
-    onProgress?.('בודק חיבור לרשת...');
-    const hasNetwork = await isNetworkAvailable();
-
-    if (!hasNetwork) {
-      onProgress?.('אין חיבור לרשת - לא ניתן לבדוק/להתקין תלויות');
-      return { ytDlp: false, ffmpeg: false, networkError: true };
-    }
-  }
-
   if (!ytDlp) {
     onProgress?.('yt-dlp לא מותקן, מתקין...');
     ytDlp = await installYtDlp(onProgress);
@@ -253,13 +243,6 @@ export async function downloadYouTubeAudio(
   const deps = await ensureDependencies((msg) => {
     onProgress?.({ percent: 0, status: 'checking', message: msg });
   });
-
-  if (deps.networkError) {
-    return {
-      success: false,
-      error: 'אין חיבור לרשת'
-    };
-  }
 
   if (!deps.ytDlp) {
     return {

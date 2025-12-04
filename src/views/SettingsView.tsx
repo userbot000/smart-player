@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Label, Button, Text, Input, Spinner, RadioGroup, Radio } from '@fluentui/react-components';
+import { Label, Button, Text, Input, Spinner, RadioGroup, Radio, Switch } from '@fluentui/react-components';
 import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular } from '@fluentui/react-icons';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';

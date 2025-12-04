@@ -173,11 +173,133 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
     }
   };
 
+  // Handle folder selection using Tauri dialog
+  const handleAddFolder = async () => {
+    if (!isTauri) {
+      // Fallback to browser file picker
+      fileInputRef.current?.click();
+      return;
+    }
+
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: 'בחר תיקיית מוזיקה',
+      });
+
+      if (!selected || typeof selected !== 'string') return;
+
+      setIsLoading(true);
+      const folderPathSelected = selected;
+      const folderNameSelected = folderPathSelected.split(/[/\\]/).pop() || 'תיקייה חדשה';
+
+      const { invoke } = await import('@tauri-apps/api/core');
+      const files: AudioFileFromRust[] = await invoke('scan_folder', { folderPath: folderPathSelected });
+
+      if (files.length === 0) {
+        showWarning('לא נמצאו קבצי אודיו בתיקייה');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if folder already exists
+      const existingFolder = await getWatchedFolderByName(folderNameSelected);
+      let currentFolderId: string;
+      let existingFileNames = new Set<string>();
+
+      if (existingFolder) {
+        currentFolderId = existingFolder.id;
+        existingFileNames = await getSongFileNamesInFolder(existingFolder.id);
+      } else {
+        currentFolderId = crypto.randomUUID();
+        const watchedFolder: WatchedFolder = {
+          id: currentFolderId,
+          path: folderPathSelected,
+          name: folderNameSelected,
+          addedAt: Date.now(),
+          lastScanned: Date.now(),
+          songCount: 0,
+        };
+        await addWatchedFolder(watchedFolder);
+      }
+
+      const newFiles = files.filter(f => !existingFileNames.has(f.name));
+      const skippedCount = files.length - newFiles.length;
+
+      if (newFiles.length === 0) {
+        showSuccess(`כל ${files.length} השירים כבר קיימים בספרייה`, 'הכל מעודכן');
+        setIsLoading(false);
+        return;
+      }
+
+      setProgress({ current: 0, total: newFiles.length, skipped: skippedCount });
+
+      let processedCount = 0;
+      const songs: Song[] = [];
+
+      const processFile = async (file: AudioFileFromRust): Promise<Song | null> => {
+        try {
+          const metadataBuffer = new Uint8Array(file.data).buffer;
+          const metadata = await extractMetadataFromBuffer(metadataBuffer, file.name);
+
+          processedCount++;
+          setProgress({ current: processedCount, total: newFiles.length, skipped: skippedCount });
+
+          return {
+            id: crypto.randomUUID(),
+            title: metadata.title,
+            artist: metadata.artist,
+            album: metadata.album,
+            duration: metadata.duration,
+            genre: metadata.genre,
+            coverUrl: metadata.coverUrl,
+            filePath: '',
+            originalPath: file.path,
+            addedAt: Date.now(),
+            playCount: 0,
+            folderId: currentFolderId,
+            fileName: file.name,
+          };
+        } catch (err) {
+          console.error(`Error processing ${file.name}:`, err);
+          return null;
+        }
+      };
+
+      const processedSongs = await processBatch(newFiles, processFile, BATCH_SIZE);
+      songs.push(...processedSongs);
+
+      if (songs.length > 0) {
+        await addSongsBulk(songs);
+      }
+
+      const totalSongs = await countSongsInFolder(currentFolderId);
+      await updateFolderSongCount(currentFolderId, totalSongs);
+      await updateFolderScanTime(currentFolderId);
+
+      if (skippedCount > 0) {
+        showSuccess(`נוספו ${songs.length} שירים חדשים (${skippedCount} כבר קיימים)`, 'הושלם');
+      } else {
+        showSuccess(`נוספו ${songs.length} שירים`, 'הושלם');
+      }
+
+      onSongsAdded();
+    } catch (error) {
+      console.error('Error adding folder:', error);
+      showError('שגיאה בהוספת תיקייה');
+    } finally {
+      setIsLoading(false);
+      setProgress({ current: 0, total: 0, skipped: 0 });
+    }
+  };
+
   const handleClick = () => {
     if (mode === 'rescan' && folderPath) {
       handleRescan();
     } else {
-      fileInputRef.current?.click();
+      handleAddFolder();
     }
   };
 

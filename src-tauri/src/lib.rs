@@ -3,7 +3,7 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Mutex;
 use serde::Serialize;
-use tauri::{Manager, Emitter};
+use tauri::Emitter;
 
 #[derive(Serialize)]
 pub struct AudioFile {

@@ -55,37 +55,51 @@ export interface PlayerResumeState {
   timestamp: number;
 }
 
-export class SmartPlayerDB extends Dexie {
-  songs!: Table<Song>;
-  playlists!: Table<Playlist>;
-  downloads!: Table<DownloadTask>;
-  settings!: Table<AppSettings & { id: string }>;
-  bookmarks!: Table<Bookmark>;
-  trackedChannels!: Table<TrackedChannel>;
-  artistFilters!: Table<ArtistFilters>;
-  blogSync!: Table<BlogSyncState>;
-  preferences!: Table<AppPreferences>;
-  playerState!: Table<PlayerResumeState>;
-
-  constructor() {
-    super('SmartPlayerDB');
-
-    this.version(3).stores({
-      songs: 'id, title, artist, album, genre, addedAt, playCount, lastPlayed',
-      playlists: 'id, name, createdAt, updatedAt',
-      downloads: 'id, status, url',
-      settings: 'id',
-      bookmarks: 'id, songId, timestamp',
-      trackedChannels: 'id, name, lastCheck',
-      artistFilters: 'id',
-      blogSync: 'id',
-      preferences: 'id',
-      playerState: 'id',
-    });
-  }
+// Watched folder interface
+export interface WatchedFolder {
+  id: string;
+  path: string;
+  name: string;
+  addedAt: number;
+  lastScanned?: number;
+  songCount: number;
 }
 
-export const db = new SmartPlayerDB();
+// Database interface for type safety
+export interface SmartPlayerDB extends Dexie {
+  songs: Table<Song>;
+  playlists: Table<Playlist>;
+  downloads: Table<DownloadTask>;
+  settings: Table<AppSettings & { id: string }>;
+  bookmarks: Table<Bookmark>;
+  trackedChannels: Table<TrackedChannel>;
+  artistFilters: Table<ArtistFilters>;
+  blogSync: Table<BlogSyncState>;
+  preferences: Table<AppPreferences>;
+  playerState: Table<PlayerResumeState>;
+  watchedFolders: Table<WatchedFolder>;
+}
+
+// Create database instance
+const database = new Dexie('SmartPlayerDB') as SmartPlayerDB;
+
+// Define schema BEFORE exporting or using the database
+database.version(3).stores({
+  songs: 'id, title, artist, album, genre, addedAt, playCount, lastPlayed, folderId, fileName',
+  playlists: 'id, name, createdAt, updatedAt',
+  downloads: 'id, status, url',
+  settings: 'id',
+  bookmarks: 'id, songId, timestamp',
+  trackedChannels: 'id, name, lastCheck',
+  artistFilters: 'id',
+  blogSync: 'id',
+  preferences: 'id',
+  playerState: 'id',
+  watchedFolders: 'id, path, addedAt',
+});
+
+// Export AFTER version is defined
+export const db = database;
 
 // Cache for blob URLs to avoid recreating them
 const blobUrlCache = new Map<string, string>();
