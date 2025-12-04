@@ -111,6 +111,15 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
     };
   }, [selectedSong, showError]);
 
+  // Store current values in refs for event handlers
+  const startTimeRef = useRef(startTime);
+  const endTimeRef = useRef(endTime);
+  
+  useEffect(() => {
+    startTimeRef.current = startTime;
+    endTimeRef.current = endTime;
+  }, [startTime, endTime]);
+
   // Handle audio playback
   useEffect(() => {
     if (!audioRef.current || !selectedSong) return;
@@ -119,9 +128,9 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
-      if (audio.currentTime >= endTime) {
+      if (audio.currentTime >= endTimeRef.current) {
         audio.pause();
-        audio.currentTime = startTime;
+        audio.currentTime = startTimeRef.current;
         setIsPlaying(false);
       }
     };
@@ -143,14 +152,27 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
       }
     };
 
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+
+    const handleError = (e: Event) => {
+      console.error('Audio error:', e);
+      setIsPlaying(false);
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
     
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
     };
-  }, [startTime, endTime]);
+  }, [selectedSong]);
 
 
   // Convert pixel position to time
@@ -164,6 +186,7 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
   // Handle mouse/touch drag
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent, type: 'start' | 'end' | 'range') => {
     e.preventDefault();
+    e.stopPropagation();
     setDragging(type);
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     dragStartX.current = clientX;
@@ -172,6 +195,7 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
 
   const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
     if (!dragging || !rangeRef.current) return;
+    e.preventDefault();
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const rect = rangeRef.current.getBoundingClientRect();
@@ -179,10 +203,10 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
     const deltaTime = deltaPercent * duration;
 
     if (dragging === 'start') {
-      const newStart = Math.max(0, Math.min(endTime - 1, dragStartValue.current.start + deltaTime));
+      const newStart = Math.max(0, Math.min(dragStartValue.current.end - 1, dragStartValue.current.start + deltaTime));
       setStartTime(newStart);
     } else if (dragging === 'end') {
-      const newEnd = Math.max(startTime + 1, Math.min(duration, dragStartValue.current.end + deltaTime));
+      const newEnd = Math.max(dragStartValue.current.start + 1, Math.min(duration, dragStartValue.current.end + deltaTime));
       setEndTime(newEnd);
     } else if (dragging === 'range') {
       const rangeDuration = dragStartValue.current.end - dragStartValue.current.start;
@@ -201,7 +225,7 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
       setStartTime(newStart);
       setEndTime(newEnd);
     }
-  }, [dragging, duration, startTime, endTime]);
+  }, [dragging, duration]);
 
   const handleDragEnd = useCallback(() => {
     setDragging(null);
@@ -210,16 +234,20 @@ export function RingtoneCreator({ songs, initialSong }: RingtoneCreatorProps) {
   // Add/remove global event listeners for dragging
   useEffect(() => {
     if (dragging) {
-      window.addEventListener('mousemove', handleDragMove);
+      const options = { passive: false };
+      window.addEventListener('mousemove', handleDragMove, options);
       window.addEventListener('mouseup', handleDragEnd);
-      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchmove', handleDragMove, options);
       window.addEventListener('touchend', handleDragEnd);
+      // Prevent text selection during drag
+      document.body.style.userSelect = 'none';
     }
     return () => {
       window.removeEventListener('mousemove', handleDragMove);
       window.removeEventListener('mouseup', handleDragEnd);
       window.removeEventListener('touchmove', handleDragMove);
       window.removeEventListener('touchend', handleDragEnd);
+      document.body.style.userSelect = '';
     };
   }, [dragging, handleDragMove, handleDragEnd]);
 
