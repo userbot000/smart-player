@@ -93,19 +93,35 @@ export async function getChannelInfo(
         const command = Command.create('powershell', [
             '-NoProfile',
             '-Command',
-            `& "${ytDlpPath}" "${url}" --no-check-certificate --dump-json --playlist-items 1 --flat-playlist`,
+            `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $env:PYTHONIOENCODING = 'utf-8'; & "${ytDlpPath}" "${url}" --no-check-certificate --encoding utf-8 --dump-json --playlist-items 1 --flat-playlist`,
         ]);
 
         const output = await command.execute();
-        if (output.code !== 0) return null;
+        
+        console.log('getChannelInfo stdout:', output.stdout);
+        console.log('getChannelInfo stderr:', output.stderr);
+        console.log('getChannelInfo code:', output.code);
+        
+        if (output.code !== 0) {
+            console.error('yt-dlp failed for channel info:', output.stderr);
+            return null;
+        }
 
         const info = JSON.parse(output.stdout);
+        
+        const channelName = info.channel || info.uploader || info.channel_id || info.uploader_id;
+        if (!channelName) {
+            console.error('Could not extract channel name from:', info);
+            return null;
+        }
+        
         return {
             id: info.channel_id || info.uploader_id || extractChannelId(url) || url,
-            name: info.channel || info.uploader || 'ערוץ לא ידוע',
+            name: channelName,
             url: info.channel_url || url,
         };
-    } catch {
+    } catch (err) {
+        console.error('getChannelInfo error:', err);
         return null;
     }
 }
@@ -120,11 +136,14 @@ export async function getLatestVideos(
         const command = Command.create('powershell', [
             '-NoProfile',
             '-Command',
-            `& "${ytDlpPath}" "${channelUrl}/videos" --no-check-certificate --dump-json --playlist-items 1-${limit} --flat-playlist`,
+            `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $env:PYTHONIOENCODING = 'utf-8'; & "${ytDlpPath}" "${channelUrl}/videos" --no-check-certificate --encoding utf-8 --dump-json --playlist-items 1-${limit} --flat-playlist`,
         ]);
 
         const output = await command.execute();
-        if (output.code !== 0) return [];
+        if (output.code !== 0) {
+            console.error('getLatestVideos failed:', output.stderr);
+            return [];
+        }
 
         const videos: ChannelVideo[] = [];
         const lines = output.stdout.trim().split('\n');
@@ -144,7 +163,8 @@ export async function getLatestVideos(
         }
 
         return videos;
-    } catch {
+    } catch (err) {
+        console.error('getLatestVideos error:', err);
         return [];
     }
 }
@@ -168,7 +188,12 @@ export async function addTrackedChannel(
     // Get channel info
     const info = await getChannelInfo(url);
     if (!info) {
-        return { success: false, error: 'לא ניתן לקבל מידע על הערוץ' };
+        return { success: false, error: 'לא ניתן לקבל מידע על הערוץ. בדוק שהקישור תקין ושיש חיבור לרשת.' };
+    }
+    
+    // Don't allow adding if we couldn't get the channel name
+    if (!info.name || info.name === info.id) {
+        return { success: false, error: 'לא ניתן לזהות את שם הערוץ. נסה קישור אחר לערוץ.' };
     }
 
     // Get latest video
