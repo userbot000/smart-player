@@ -442,8 +442,11 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
 
   const buttonText = () => {
     if (isLoading) {
-      const skipText = progress.skipped > 0 ? ` (דילוג על ${progress.skipped})` : '';
-      return `מוסיף... ${progress.current}/${progress.total}${skipText}`;
+      if (progress.total === 0) {
+        return 'סורק תיקייה...';
+      }
+      const percent = Math.round((progress.current / progress.total) * 100);
+      return `${percent}% (${progress.current}/${progress.total})`;
     }
     return mode === 'rescan' ? 'סרוק מחדש' : 'הוסף תיקייה';
   };
@@ -457,14 +460,42 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
         style={{ display: 'none' }}
         {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
       />
-      <Button
-        appearance={mode === 'rescan' ? 'outline' : 'primary'}
-        icon={isLoading ? <Spinner size="tiny" /> : mode === 'rescan' ? <ArrowSync24Regular /> : <FolderAdd24Regular />}
-        onClick={handleClick}
-        disabled={isLoading}
-      >
-        {buttonText()}
-      </Button>
+      {isLoading && progress.total > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '200px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Spinner size="tiny" />
+            <span style={{ fontSize: '14px', fontWeight: 500 }}>{buttonText()}</span>
+          </div>
+          {progress.skipped > 0 && (
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              דילוג על {progress.skipped} קיימים
+            </span>
+          )}
+          <div style={{ 
+            width: '100%', 
+            height: '4px', 
+            background: 'var(--surface-secondary)', 
+            borderRadius: '2px',
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              width: `${(progress.current / progress.total) * 100}%`, 
+              height: '100%', 
+              background: 'var(--color-primary)',
+              transition: 'width 0.3s'
+            }} />
+          </div>
+        </div>
+      ) : (
+        <Button
+          appearance={mode === 'rescan' ? 'outline' : 'primary'}
+          icon={isLoading ? <Spinner size="tiny" /> : mode === 'rescan' ? <ArrowSync24Regular /> : <FolderAdd24Regular />}
+          onClick={handleClick}
+          disabled={isLoading}
+        >
+          {buttonText()}
+        </Button>
+      )}
     </>
   );
 }

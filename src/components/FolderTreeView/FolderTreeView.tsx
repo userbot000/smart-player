@@ -44,22 +44,28 @@ export function FolderTreeView({ songs, onDelete, onToggleFavorite }: FolderTree
     songs.forEach((song) => {
       const subFolder = song.subFolder || '';
       
+      // Normalize path separators
+      const normalizedSubFolder = subFolder.replace(/\\/g, '/');
+      const normalizedPath = pathStr.replace(/\\/g, '/');
+      
       // Check if song is in current folder or subfolder
-      if (pathStr === '') {
+      if (normalizedPath === '') {
         // Root level
-        if (!subFolder) {
+        if (!normalizedSubFolder) {
           songsInFolder.push(song);
         } else {
-          const firstPart = subFolder.split(/[/\\]/)[0];
+          const firstPart = normalizedSubFolder.split('/')[0];
           foldersMap.set(firstPart, (foldersMap.get(firstPart) || 0) + 1);
         }
       } else {
         // Inside a folder
-        if (subFolder === pathStr) {
+        if (normalizedSubFolder === normalizedPath) {
+          // Song directly in this folder
           songsInFolder.push(song);
-        } else if (subFolder.startsWith(pathStr + '/') || subFolder.startsWith(pathStr + '\\')) {
-          const remaining = subFolder.substring(pathStr.length + 1);
-          const nextPart = remaining.split(/[/\\]/)[0];
+        } else if (normalizedSubFolder.startsWith(normalizedPath + '/')) {
+          // Song in subfolder
+          const remaining = normalizedSubFolder.substring(normalizedPath.length + 1);
+          const nextPart = remaining.split('/')[0];
           if (nextPart) {
             foldersMap.set(nextPart, (foldersMap.get(nextPart) || 0) + 1);
           }
