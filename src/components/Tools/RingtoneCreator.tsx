@@ -207,21 +207,59 @@ export function RingtoneCreator({ songs }: RingtoneCreatorProps) {
   const playheadPercent = ((currentTime - startTime) / clipDuration) * 100;
 
 
+  const handleFileSelect = async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        multiple: false,
+        filters: [{
+          name: 'Audio',
+          extensions: ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac']
+        }]
+      });
+
+      if (selected && typeof selected === 'string') {
+        // Create temporary song object
+        const fileName = selected.split(/[/\\]/).pop() || 'Unknown';
+        const tempSong: Song = {
+          id: 'temp-' + Date.now(),
+          title: fileName.replace(/\.[^.]+$/, ''),
+          artist: 'קובץ מקומי',
+          duration: 180, // Default, will be updated when audio loads
+          filePath: selected,
+          originalPath: selected,
+          addedAt: Date.now(),
+          playCount: 0,
+          isFavorite: false,
+        };
+        setSelectedSong(tempSong);
+      }
+    } catch (error) {
+      showError('שגיאה בבחירת קובץ');
+    }
+  };
+
   return (
     <div className="ringtone-creator">
       <div className="ringtone-creator__section">
         <Label>בחר שיר</Label>
-        <Combobox
-          placeholder="חפש שיר..."
-          onOptionSelect={(_, data) => handleSongSelect(data.optionValue || '')}
-          className="ringtone-creator__select"
-        >
-          {songs.map((song) => (
-            <Option key={song.id} value={song.id} text={`${song.title} - ${song.artist}`}>
-              {song.title} - {song.artist}
-            </Option>
-          ))}
-        </Combobox>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+          <Combobox
+            placeholder="חפש שיר מהספרייה..."
+            onOptionSelect={(_, data) => handleSongSelect(data.optionValue || '')}
+            className="ringtone-creator__select"
+            style={{ flex: 1 }}
+          >
+            {songs.map((song) => (
+              <Option key={song.id} value={song.id} text={`${song.title} - ${song.artist}`}>
+                {song.title} - {song.artist}
+              </Option>
+            ))}
+          </Combobox>
+          <Button appearance="secondary" onClick={handleFileSelect}>
+            בחר קובץ מהמחשב
+          </Button>
+        </div>
       </div>
 
       {selectedSong && (
