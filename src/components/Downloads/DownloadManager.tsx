@@ -31,7 +31,7 @@ import {
 } from '../../utils/blogScraper';
 
 import { filterUrlsByArtist } from '../../utils/artistFilters';
-import { downloadYouTubeAudio, updateYtDlp, YtDownloadProgress, isNetworkAvailable } from '../../utils/ytDownloader';
+import { downloadYouTubeAudio, YtDownloadProgress, isNetworkAvailable } from '../../utils/ytDownloader';
 import './DownloadManager.css';
 
 interface DownloadManagerProps {
@@ -89,8 +89,48 @@ export function DownloadManager({
         setYtProgress(progress);
       });
 
-      if (result.success) {
-        setYtProgress({ percent: 100, status: 'done', message: `הורד: ${result.title}` });
+      if (result.success && result.filePath) {
+        setYtProgress({ percent: 95, status: 'converting', message: 'מוסיף לספרייה...' });
+        
+        // Add the downloaded file to the library
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const { addSong } = await import('../../db/database');
+          const { extractMetadataFromBuffer } = await import('../../utils/audioMetadata');
+          
+          // Read the file
+          const data: number[] = await invoke('read_audio_file', { filePath: result.filePath });
+          const buffer = new Uint8Array(data).buffer;
+          
+          // Extract metadata
+          const fileName = result.filePath.split(/[/\\]/).pop() || 'Unknown';
+          const metadata = await extractMetadataFromBuffer(buffer, fileName);
+          
+          // Create song object
+          const song = {
+            id: crypto.randomUUID(),
+            title: metadata.title || result.title || fileName.replace(/\.[^.]+$/, ''),
+            artist: metadata.artist,
+            album: metadata.album,
+            genre: metadata.genre,
+            duration: metadata.duration,
+            coverUrl: metadata.coverUrl,
+            filePath: result.filePath,
+            originalPath: result.filePath,
+            addedAt: Date.now(),
+            playCount: 0,
+            isFavorite: false,
+            fileName,
+          };
+          
+          await addSong(song);
+          
+          setYtProgress({ percent: 100, status: 'done', message: `הורד והתווסף לספרייה: ${song.title}` });
+        } catch (addErr) {
+          console.error('Failed to add to library:', addErr);
+          setYtProgress({ percent: 100, status: 'done', message: `הורד: ${result.title} (לא התווסף לספרייה)` });
+        }
+        
         setYtUrl('');
       } else {
         setYtError(result.error || 'שגיאה בהורדה');
@@ -119,19 +159,41 @@ export function DownloadManager({
         return;
       }
 
-      setYtProgress({ percent: 0, status: 'checking', message: 'מעדכן yt-dlp...' });
+      // Update both yt-dlp and ffmpeg
+      const { updateYtDlp, installFfmpeg, isFfmpegInstalled } = await import('../../utils/ytDownloader');
       
-      const success = await updateYtDlp((msg) => {
-        setYtProgress({ percent: 50, status: 'checking', message: msg });
+      setYtProgress({ percent: 25, status: 'checking', message: 'מעדכן yt-dlp...' });
+      
+      const ytSuccess = await updateYtDlp((msg) => {
+        setYtProgress({ percent: 25, status: 'checking', message: msg });
       });
       
-      if (success) {
-        setYtProgress({ percent: 100, status: 'done', message: 'yt-dlp עודכן בהצלחה!' });
-      } else {
-        setYtError('לא ניתן לעדכן. נסה: winget upgrade yt-dlp');
+      if (!ytSuccess) {
+        setYtError('לא ניתן להתקין yt-dlp');
         setYtProgress(null);
+        setYtUpdating(false);
+        return;
       }
-    } catch {
+
+      setYtProgress({ percent: 50, status: 'checking', message: 'בודק ffmpeg...' });
+      
+      const ffmpegExists = await isFfmpegInstalled();
+      if (!ffmpegExists) {
+        setYtProgress({ percent: 60, status: 'checking', message: 'מתקין ffmpeg...' });
+        const ffmpegSuccess = await installFfmpeg((msg) => {
+          setYtProgress({ percent: 75, status: 'checking', message: msg });
+        });
+        
+        if (!ffmpegSuccess) {
+          setYtError('yt-dlp הותקן, אך ffmpeg נכשל');
+          setYtProgress(null);
+          setYtUpdating(false);
+          return;
+        }
+      }
+      
+      setYtProgress({ percent: 100, status: 'done', message: 'הכל מותקן ומעודכן!' });
+    } catch (err) {
       setYtError('שגיאה בעדכון');
       setYtProgress(null);
     } finally {
@@ -316,15 +378,28 @@ export function DownloadManager({
       <div className="download-manager__manual">
         <div className="smart-update__header">
           <h3>הורדה מיוטיוב</h3>
-          <Button
-            appearance="subtle"
-            icon={ytUpdating ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
-            onClick={handleUpdateYtDlp}
-            disabled={ytUpdating || ytDownloading}
-            title="עדכן yt-dlp"
-          >
-            עדכן
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Open24Regular />}
+              onClick={async () => {
+                const { openBinFolder } = await import('../../utils/ytDownloader');
+                openBinFolder();
+              }}
+              title="פתח תיקיית bin"
+            >
+              תיקייה
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={ytUpdating ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
+              onClick={handleUpdateYtDlp}
+              disabled={ytUpdating || ytDownloading}
+              title="עדכן yt-dlp + ffmpeg"
+            >
+              עדכן
+            </Button>
+          </div>
         </div>
         <p className="download-manager__hint">
           הדבק קישור YouTube להורדת אודיו באיכות גבוהה

@@ -76,15 +76,24 @@ function extractChannelId(url: string): string | null {
     return null;
 }
 
+// Get yt-dlp path from ytDownloader
+async function getYtDlpPath(): Promise<string> {
+    const { appDataDir } = await import('@tauri-apps/api/path');
+    const appData = await appDataDir();
+    const cleanAppData = appData.replace(/[/\\]$/, '');
+    return `${cleanAppData}\\bin\\yt-dlp.exe`;
+}
+
 // Get channel info using yt-dlp
 export async function getChannelInfo(
     url: string
 ): Promise<{ id: string; name: string; url: string } | null> {
     try {
+        const ytDlpPath = await getYtDlpPath();
         const command = Command.create('powershell', [
             '-NoProfile',
             '-Command',
-            `yt-dlp "${url}" --no-check-certificate --dump-json --playlist-items 1 --flat-playlist`,
+            `& "${ytDlpPath}" "${url}" --no-check-certificate --dump-json --playlist-items 1 --flat-playlist`,
         ]);
 
         const output = await command.execute();
@@ -107,10 +116,11 @@ export async function getLatestVideos(
     limit: number = 5
 ): Promise<ChannelVideo[]> {
     try {
+        const ytDlpPath = await getYtDlpPath();
         const command = Command.create('powershell', [
             '-NoProfile',
             '-Command',
-            `yt-dlp "${channelUrl}/videos" --no-check-certificate --dump-json --playlist-items 1-${limit} --flat-playlist`,
+            `& "${ytDlpPath}" "${channelUrl}/videos" --no-check-certificate --dump-json --playlist-items 1-${limit} --flat-playlist`,
         ]);
 
         const output = await command.execute();
