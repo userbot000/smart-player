@@ -3,7 +3,7 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Mutex;
 use serde::Serialize;
-use tauri::Emitter;
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use serde_json;
 
 #[derive(Serialize)]
@@ -180,6 +180,62 @@ fn get_pending_files() -> Vec<String> {
     result
 }
 
+/// Switch to mini player mode
+#[tauri::command]
+async fn switch_to_mini_player(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Hide main window
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        main_window.hide().map_err(|e| e.to_string())?;
+    }
+
+    // Check if mini player already exists
+    if let Some(mini_window) = app_handle.get_webview_window("mini-player") {
+        mini_window.show().map_err(|e| e.to_string())?;
+        mini_window.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    // Create mini player window
+    let mini_window = WebviewWindowBuilder::new(
+        &app_handle,
+        "mini-player",
+        WebviewUrl::App("mini-player.html".into())
+    )
+    .title("Mini Player")
+    .inner_size(500.0, 80.0)
+    .min_inner_size(400.0, 70.0)
+    .max_inner_size(600.0, 100.0)
+    .resizable(true)
+    .decorations(false)
+    .transparent(false)
+    .always_on_top(true)
+    .skip_taskbar(false)
+    .center()
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    mini_window.set_focus().map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+/// Switch back to main window from mini player
+#[tauri::command]
+async fn switch_to_main_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Hide mini player
+    if let Some(mini_window) = app_handle.get_webview_window("mini-player") {
+        mini_window.hide().map_err(|e| e.to_string())?;
+    }
+
+    // Show main window
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        main_window.show().map_err(|e| e.to_string())?;
+        main_window.set_focus().map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
 /// Check if a file is an audio file
 fn is_audio_file(path: &str) -> bool {
     let audio_extensions = ["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "opus"];
@@ -219,7 +275,7 @@ pub fn run() {
             
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, scan_folder, write_file, read_audio_file, get_pending_files])
+        .invoke_handler(tauri::generate_handler![greet, scan_folder, write_file, read_audio_file, get_pending_files, switch_to_mini_player, switch_to_main_window])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

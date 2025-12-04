@@ -11,6 +11,7 @@ import {
   Bookmark24Filled,
   Delete24Regular,
   TopSpeed24Regular,
+  ArrowMinimize24Regular,
 } from '@fluentui/react-icons';
 import { Slider, Tooltip, Button, MessageBar, MessageBarBody, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components';
 import { usePlayerStore } from '../../store/playerStore';
@@ -231,6 +232,22 @@ export function PlayerControls() {
         />
         <span className="player__volume-percent">{Math.round(volume * 100)}%</span>
       </div>
+
+      <Tooltip content="מצב מיני" relationship="label">
+        <Button
+          appearance="subtle"
+          icon={<ArrowMinimize24Regular />}
+          onClick={async () => {
+            try {
+              const { invoke } = await import('@tauri-apps/api/core');
+              await invoke('switch_to_mini_player');
+            } catch (error) {
+              console.error('Error switching to mini player:', error);
+            }
+          }}
+          className="player__mini-btn"
+        />
+      </Tooltip>
     </div>
   );
 }
