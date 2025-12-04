@@ -430,11 +430,11 @@ export async function downloadYouTubeAudio(
     console.log('Running yt-dlp from bin directory');
     console.log('Simplified URL:', simplifiedUrl);
 
-    // Run yt-dlp via PowerShell - simple command
+    // Run yt-dlp via PowerShell - simple command with UTF-8 encoding
     const command = Command.create('powershell', [
       '-NoProfile',
       '-Command',
-      `Set-Location '${binDir}'; .\\yt-dlp.exe '${simplifiedUrl}' --ffmpeg-location '.' --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o '${outputTemplate}' --print after_move:filepath --no-playlist`
+      `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $env:PYTHONIOENCODING = 'utf-8'; Set-Location '${binDir}'; .\\yt-dlp.exe '${simplifiedUrl}' --ffmpeg-location '.' --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata --encoding utf-8 -o '${outputTemplate}' --print after_move:filepath --no-playlist`
     ]);
 
     let filePath = '';
@@ -579,7 +579,7 @@ export async function getYouTubeInfo(url: string): Promise<{
     const ytDlpPath = await getYtDlpPath();
     const command = Command.create('powershell', [
       '-NoProfile', '-Command',
-      `& "${ytDlpPath}" "${url}" --no-check-certificate --dump-json --no-download`
+      `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $env:PYTHONIOENCODING = 'utf-8'; & "${ytDlpPath}" "${url}" --no-check-certificate --encoding utf-8 --dump-json --no-download`
     ]);
 
     const output = await command.execute();
