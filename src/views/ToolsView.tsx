@@ -5,19 +5,20 @@ import {
   SelectTabEvent,
   SelectTabData,
 } from '@fluentui/react-components';
-import { MusicNote224Regular, Tag24Regular } from '@fluentui/react-icons';
+import { MusicNote224Regular, Tag24Regular, FolderArrowRight24Regular } from '@fluentui/react-icons';
 import { RingtoneCreator } from '../components/Tools/RingtoneCreator';
 import { MetadataEditor } from '../components/Tools/MetadataEditor';
+import { SinglesOrganizer } from '../components/Tools/SinglesOrganizer';
 import { Song } from '../types';
 
 interface ToolsViewProps {
   songs: Song[];
   onSongUpdated: () => void;
   initialSong?: Song;
-  initialTab?: 'ringtone' | 'metadata';
+  initialTab?: 'ringtone' | 'metadata' | 'organizer';
 }
 
-type ToolTab = 'ringtone' | 'metadata';
+type ToolTab = 'ringtone' | 'metadata' | 'organizer';
 
 export function ToolsView({ songs, onSongUpdated, initialSong, initialTab }: ToolsViewProps) {
   const [selectedTab, setSelectedTab] = useState<ToolTab>(initialTab || 'ringtone');
@@ -45,11 +46,15 @@ export function ToolsView({ songs, onSongUpdated, initialSong, initialTab }: Too
         <Tab value="metadata" icon={<Tag24Regular />}>
           עריכת תגיות
         </Tab>
+        <Tab value="organizer" icon={<FolderArrowRight24Regular />}>
+          מסדר הסינגלים
+        </Tab>
       </TabList>
 
       <div className="tools-view__content">
         {selectedTab === 'ringtone' && <RingtoneCreator songs={songs} initialSong={initialSong} />}
         {selectedTab === 'metadata' && <MetadataEditor songs={songs} onSongUpdated={onSongUpdated} initialSong={initialSong} />}
+        {selectedTab === 'organizer' && <SinglesOrganizer onSongsUpdated={onSongUpdated} />}
       </div>
 
       <style>{`
