@@ -22,14 +22,16 @@
 - ✅ יעלה את הקבצים כ-Artifacts
 - ✅ יעשה commit לשינויים (בפעם הראשונה)
 
-### שלב 3: הורד את ה-APK
+### שלב 3: הורד את הקבצים
 
 1. לחץ על ה-workflow run שהסתיים
 2. גלול למטה ל-**Artifacts**
-3. הורד את ה-APK שאתה צריך:
-   - **smart-player-android-arm64** - למכשירים מודרניים (מומלץ)
-   - **smart-player-android-armv7** - למכשירים ישנים
-   - **smart-player-android-universal** - עובד על כולם (גדול יותר)
+3. הורד:
+   - **APK** - את ה-APK שאתה צריך:
+     - **smart-player-android-arm64** - למכשירים מודרניים (מומלץ)
+     - **smart-player-android-armv7** - למכשירים ישנים
+     - **smart-player-android-universal** - עובד על כולם (גדול יותר)
+   - **android-initialization-files** (בפעם הראשונה בלבד) - קבצי האתחול
 
 ### שלב 4: התקן על המכשיר
 
@@ -38,12 +40,34 @@
 3. אשר התקנה מ-"מקורות לא ידועים" (אם נדרש)
 4. התקן והנה! 🎉
 
+### שלב 5 (אופציונלי): שמור את האתחול
+
+אם זו הפעם הראשונה ואתה רוצה לשמור את האתחול:
+
+1. הורד את **android-initialization-files.tar.gz**
+2. חלץ בשורש הפרויקט:
+   ```bash
+   tar -xzf android-init-files.tar.gz
+   ```
+3. עשה commit:
+   ```bash
+   git add src-tauri/gen/android src-tauri/tauri.conf.json
+   git commit -m "Initialize Android support"
+   git push
+   ```
+
+**או** פשוט דלג על זה - ה-workflow יאתחל מחדש בכל פעם (לוקח רק דקה נוספת).
+
 ## 🔄 בניות עתידיות
 
-### אם Android כבר מאותחל:
+### אם Android כבר מאותחל (שמרת את הקבצים):
 - פשוט הרץ את ה-workflow שוב
 - זה יבנה APK חדש עם השינויים האחרונים
 - לא צריך לאתחל שוב
+
+### אם לא שמרת את האתחול:
+- ה-workflow יאתחל מחדש אוטומטית
+- לוקח דקה נוספת, אבל עובד מצוין
 
 ### הפעלת בניות אוטומטיות:
 לאחר האתחול הראשון, תוכל להפעיל בניות אוטומטיות:

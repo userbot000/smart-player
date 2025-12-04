@@ -135,15 +135,20 @@ jobs:
           
           echo "Android permissions configured"
 
-      - name: Commit Android initialization (if new)
+      - name: Create Android initialization archive
         if: steps.check_android.outputs.initialized == 'false'
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add src-tauri/gen/android
-          git add src-tauri/tauri.conf.json
-          git commit -m "Initialize Android support" || echo "No changes to commit"
-          git push
+          echo "📦 Creating archive of Android initialization files..."
+          tar -czf android-init-files.tar.gz src-tauri/gen/android src-tauri/tauri.conf.json
+          echo "✅ Archive created: android-init-files.tar.gz"
+
+      - name: Upload Android initialization files
+        if: steps.check_android.outputs.initialized == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-initialization-files
+          path: android-init-files.tar.gz
+          retention-days: 30
 
       - name: Build Android APK (ARM64)
         run: npm run tauri android build -- --target aarch64 --apk
@@ -213,29 +218,44 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Android Build Complete! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Android Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### APK Files Built:" >> $GITHUB_STEP_SUMMARY
           
+          echo "### 📱 APK Files Built:" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ steps.find_apk.outputs.apk_arm64 }}" ]; then
-            echo "- ✅ ARM64 APK" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ ARM64 APK (מומלץ למכשירים מודרניים)" >> $GITHUB_STEP_SUMMARY
           fi
-          
           if [ -n "${{ steps.find_apk.outputs.apk_armv7 }}" ]; then
-            echo "- ✅ ARMv7 APK" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ ARMv7 APK (למכשירים ישנים)" >> $GITHUB_STEP_SUMMARY
           fi
-          
           if [ -n "${{ steps.find_apk.outputs.apk_universal }}" ]; then
-            echo "- ✅ Universal APK" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Universal APK (עובד על כולם)" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the APK files from the Artifacts section above." >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 הורדה והתקנה:" >> $GITHUB_STEP_SUMMARY
+          echo "1. גלול למעלה ל-**Artifacts**" >> $GITHUB_STEP_SUMMARY
+          echo "2. הורד את ה-APK המתאים למכשיר שלך" >> $GITHUB_STEP_SUMMARY
+          echo "3. העבר למכשיר Android והתקן" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ steps.check_android.outputs.initialized }}" == "false" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-            echo "1. Android has been initialized and committed to the repository" >> $GITHUB_STEP_SUMMARY
-            echo "2. Enable Android builds in workflows by changing \`if: false\` to \`if: true\`" >> $GITHUB_STEP_SUMMARY
-            echo "3. Future builds will use the initialized Android project" >> $GITHUB_STEP_SUMMARY
+            echo "### 🔧 צעדים הבאים (חשוב!):" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Android אותחל בהצלחה! כדי לשמור את האתחול:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "1. הורד את **android-initialization-files** מ-Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "2. חלץ את הקובץ בשורש הפרויקט:" >> $GITHUB_STEP_SUMMARY
+            echo "   \`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "   tar -xzf android-init-files.tar.gz" >> $GITHUB_STEP_SUMMARY
+            echo "   \`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "3. עשה commit:" >> $GITHUB_STEP_SUMMARY
+            echo "   \`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "   git add src-tauri/gen/android src-tauri/tauri.conf.json" >> $GITHUB_STEP_SUMMARY
+            echo "   git commit -m \"Initialize Android support\"" >> $GITHUB_STEP_SUMMARY
+            echo "   git push" >> $GITHUB_STEP_SUMMARY
+            echo "   \`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "4. שנה \`if: false\` ל-\`if: true\` ב-workflows" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**או** פשוט הרץ את ה-workflow שוב בפעם הבאה - הוא ישתמש באתחול הקיים!" >> $GITHUB_STEP_SUMMARY
           fi
