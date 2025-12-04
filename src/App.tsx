@@ -13,6 +13,8 @@ import { Song, DownloadTask } from './types';
 import { getAllSongs, deleteSong, getRecentlyPlayed, updateSong, getPreferences, savePreferences, getPlayerState, savePlayerState, addSong, ThemeMode } from './db/database';
 import type { ViewType as SidebarViewType } from './components/Sidebar/Sidebar';
 import { usePlayerStore } from './store/playerStore';
+import { useAudioPlayer } from './hooks/useAudioPlayer';
+import { useMiniPlayerSync } from './hooks/useMiniPlayerSync';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
 import { extractMetadataFromBuffer } from './utils/audioMetadata';
@@ -37,6 +39,12 @@ function App() {
   const isDark = themeMode === 'system' ? systemDark : themeMode === 'dark';
   
   const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue, setPlaying } = usePlayerStore();
+
+  // Audio player hook
+  const { seek } = useAudioPlayer();
+  
+  // Mini player sync hook
+  useMiniPlayerSync(seek);
 
   // Reload recent songs when current song changes
   useEffect(() => {
@@ -604,7 +612,7 @@ function App() {
           <Sidebar currentView={currentView} onViewChange={setCurrentView} />
           <main className="app__main">
             <div className="app__content">{renderView()}</div>
-            <PlayerControls />
+            <PlayerControls seek={seek} isReady={!!seek} />
           </main>
         </div>
       </ToastProvider>

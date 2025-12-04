@@ -15,20 +15,22 @@ import {
 } from '@fluentui/react-icons';
 import { Slider, Tooltip, Button, MessageBar, MessageBarBody, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components';
 import { usePlayerStore } from '../../store/playerStore';
-import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { formatTime } from '../../utils/formatTime';
 import { getBookmarks, addBookmark, removeBookmark, Bookmark } from '../../db/bookmarks';
 import './PlayerControls.css';
 
-export function PlayerControls() {
+interface PlayerControlsProps {
+  seek: (time: number) => void;
+  isReady: boolean;
+}
+
+export function PlayerControls({ seek, isReady }: PlayerControlsProps) {
   const {
     currentSong, isPlaying, volume, progress, duration,
     shuffle, repeat, smartQueue, error, playbackRate,
     togglePlay, setVolume, toggleShuffle, cycleRepeat, toggleSmartQueue,
     nextSong, prevSong, setError, setPlaybackRate
   } = usePlayerStore();
-
-  const { seek, isReady } = useAudioPlayer();
   
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [showBookmarks, setShowBookmarks] = useState(false);

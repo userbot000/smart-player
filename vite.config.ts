@@ -13,7 +13,7 @@ export default defineConfig(async () => ({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        'mini-player': resolve(__dirname, 'public/mini-player.html'),
+        'mini-player': resolve(__dirname, 'mini-player.html'),
       },
     },
   },

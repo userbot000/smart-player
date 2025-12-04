@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Play24Filled, Pause24Filled, Previous24Filled, Next24Filled,
   Speaker224Filled, SpeakerMute24Filled,
@@ -6,24 +6,67 @@ import {
   Maximize24Regular,
 } from '@fluentui/react-icons';
 import { Slider, Tooltip, Button } from '@fluentui/react-components';
-import { usePlayerStore } from '../../store/playerStore';
-import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { formatTime } from '../../utils/formatTime';
 import './MiniPlayer.css';
 
+interface SongInfo {
+  id: string;
+  title: string;
+  artist: string;
+  coverUrl?: string;
+}
+
+interface PlayerState {
+  currentSong: SongInfo | null;
+  isPlaying: boolean;
+  volume: number;
+  progress: number;
+  duration: number;
+}
+
 export function MiniPlayer() {
-  const {
-    currentSong, isPlaying, volume, progress, duration,
-    togglePlay, setVolume, nextSong, prevSong
-  } = usePlayerStore();
+  const [state, setState] = useState<PlayerState>({
+    currentSong: null,
+    isPlaying: false,
+    volume: 0.7,
+    progress: 0,
+    duration: 0,
+  });
 
-  const { seek, isReady } = useAudioPlayer();
+  // Listen for state updates from main window
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
 
-  const handleProgressChange = (_: unknown, data: { value: number }) => {
-    if (isReady) seek(data.value);
+    const setup = async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        
+        // Listen for player state sync from main window
+        unlisten = await listen<PlayerState>('player-state-sync', (event) => {
+          setState(event.payload);
+        });
+
+        // Request initial state
+        const { emit } = await import('@tauri-apps/api/event');
+        await emit('request-player-state');
+      } catch (error) {
+        console.error('Error setting up listeners:', error);
+      }
+    };
+
+    setup();
+    return () => { unlisten?.(); };
+  }, []);
+
+  // Send command to main window
+  const sendCommand = async (command: string, data?: unknown) => {
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      await emit('player-command', { command, data });
+    } catch (error) {
+      console.error('Error sending command:', error);
+    }
   };
-
-  const handleVolumeChange = (_: unknown, data: { value: number }) => setVolume(data.value);
 
   const handleBackToMain = async () => {
     try {
@@ -53,6 +96,8 @@ export function MiniPlayer() {
     };
     setupDrag();
   }, []);
+
+  const { currentSong, isPlaying, volume, progress, duration } = state;
 
   if (!currentSong) {
     return (
@@ -85,14 +130,24 @@ export function MiniPlayer() {
         </div>
 
         <div className="mini-player__controls">
-          <Button appearance="subtle" icon={<Previous24Filled />} onClick={nextSong} size="small" />
+          <Button 
+            appearance="subtle" 
+            icon={<Previous24Filled />} 
+            onClick={() => sendCommand('prev')} 
+            size="small" 
+          />
           <Button
             appearance="primary"
             icon={isPlaying ? <Pause24Filled /> : <Play24Filled />}
-            onClick={togglePlay}
+            onClick={() => sendCommand('togglePlay')}
             className="mini-player__play-btn"
           />
-          <Button appearance="subtle" icon={<Next24Filled />} onClick={prevSong} size="small" />
+          <Button 
+            appearance="subtle" 
+            icon={<Next24Filled />} 
+            onClick={() => sendCommand('next')} 
+            size="small" 
+          />
         </div>
 
         <div className="mini-player__progress">
@@ -100,7 +155,7 @@ export function MiniPlayer() {
             min={0}
             max={duration || 100}
             value={progress}
-            onChange={handleProgressChange}
+            onChange={(_, data) => sendCommand('seek', data.value)}
             className="mini-player__slider"
           />
           <span className="mini-player__time">{formatTime(progress)} / {formatTime(duration)}</span>
@@ -111,7 +166,7 @@ export function MiniPlayer() {
             <Button
               appearance="subtle"
               icon={volume === 0 ? <SpeakerMute24Filled /> : <Speaker224Filled />}
-              onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+              onClick={() => sendCommand('setVolume', volume === 0 ? 0.7 : 0)}
               size="small"
             />
           </Tooltip>
@@ -120,7 +175,7 @@ export function MiniPlayer() {
             max={1}
             step={0.01}
             value={volume}
-            onChange={handleVolumeChange}
+            onChange={(_, data) => sendCommand('setVolume', data.value)}
             className="mini-player__volume-slider"
           />
         </div>

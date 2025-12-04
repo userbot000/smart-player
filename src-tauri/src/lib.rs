@@ -195,24 +195,33 @@ async fn switch_to_mini_player(app_handle: tauri::AppHandle) -> Result<(), Strin
         return Ok(());
     }
 
-    // Create mini player window
+    // Get screen size to position window at bottom-right
     let mini_window = WebviewWindowBuilder::new(
         &app_handle,
         "mini-player",
         WebviewUrl::App("mini-player.html".into())
     )
     .title("Mini Player")
-    .inner_size(500.0, 80.0)
-    .min_inner_size(400.0, 70.0)
-    .max_inner_size(600.0, 100.0)
+    .inner_size(420.0, 90.0)
+    .min_inner_size(350.0, 80.0)
     .resizable(true)
     .decorations(false)
     .transparent(false)
     .always_on_top(true)
     .skip_taskbar(false)
-    .center()
     .build()
     .map_err(|e| e.to_string())?;
+
+    // Position at bottom-right of screen
+    if let Ok(monitor) = mini_window.current_monitor() {
+        if let Some(monitor) = monitor {
+            let screen_size = monitor.size();
+            let window_size = mini_window.outer_size().unwrap_or(tauri::PhysicalSize::new(420, 90));
+            let x = screen_size.width as i32 - window_size.width as i32 - 20;
+            let y = screen_size.height as i32 - window_size.height as i32 - 60;
+            let _ = mini_window.set_position(tauri::PhysicalPosition::new(x, y));
+        }
+    }
 
     mini_window.set_focus().map_err(|e| e.to_string())?;
     
