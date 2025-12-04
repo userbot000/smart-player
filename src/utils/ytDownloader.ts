@@ -220,10 +220,12 @@ export async function installFfmpeg(
   try {
     const binDir = await getBinDir();
     const ffmpegPath = await getFfmpegPath();
+    const ffprobePath = `${binDir}\\ffprobe.exe`;
 
     console.log('Installing ffmpeg to:', ffmpegPath);
+    console.log('Installing ffprobe to:', ffprobePath);
 
-    // Download ffmpeg essentials build
+    // Download ffmpeg essentials build (includes ffmpeg + ffprobe)
     const downloadCmd = Command.create('powershell', [
       '-NoProfile',
       '-ExecutionPolicy', 'Bypass',
@@ -231,6 +233,7 @@ export async function installFfmpeg(
       `$ErrorActionPreference = 'Stop'; ` +
       `$binDir = "${binDir}"; ` +
       `$ffmpegPath = "${ffmpegPath}"; ` +
+      `$ffprobePath = "${ffprobePath}"; ` +
       `Write-Host "יוצר תיקייה: $binDir"; ` +
       `New-Item -ItemType Directory -Force -Path $binDir | Out-Null; ` +
       `$zip = "$env:TEMP\\ffmpeg.zip"; ` +
@@ -240,14 +243,17 @@ export async function installFfmpeg(
       `Write-Host "מחלץ קבצים..."; ` +
       `Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force; ` +
       `$ffmpegExe = Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\ffmpeg.exe" | Select-Object -First 1; ` +
-      `if ($ffmpegExe) { ` +
+      `$ffprobeExe = Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build\\bin\\ffprobe.exe" | Select-Object -First 1; ` +
+      `if ($ffmpegExe -and $ffprobeExe) { ` +
       `  Write-Host "מעתיק ffmpeg.exe..."; ` +
       `  Copy-Item $ffmpegExe.FullName -Destination $ffmpegPath -Force; ` +
+      `  Write-Host "מעתיק ffprobe.exe..."; ` +
+      `  Copy-Item $ffprobeExe.FullName -Destination $ffprobePath -Force; ` +
       `  Write-Host "מנקה קבצים זמניים..."; ` +
       `  Remove-Item $zip -Force -ErrorAction SilentlyContinue; ` +
       `  Get-ChildItem "$env:TEMP\\ffmpeg-*-essentials_build" -Recurse | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue; ` +
-      `  if (Test-Path $ffmpegPath) { Write-Host "הקובץ נוצר בהצלחה"; Write-Output "OK" } else { throw "הקובץ לא נוצר" } ` +
-      `} else { throw "לא נמצא ffmpeg.exe בארכיון" }`
+      `  if ((Test-Path $ffmpegPath) -and (Test-Path $ffprobePath)) { Write-Host "הקבצים נוצרו בהצלחה"; Write-Output "OK" } else { throw "הקבצים לא נוצרו" } ` +
+      `} else { throw "לא נמצאו ffmpeg.exe או ffprobe.exe בארכיון" }`
     ]);
     const result = await downloadCmd.execute();
 
@@ -256,7 +262,7 @@ export async function installFfmpeg(
     console.log('ffmpeg install code:', result.code);
 
     if (result.code === 0 && result.stdout.includes('OK')) {
-      onProgress?.('ffmpeg הותקן בהצלחה!');
+      onProgress?.('ffmpeg + ffprobe הותקנו בהצלחה!');
       return true;
     } else {
       console.error('ffmpeg install failed:', result.stderr);
@@ -449,20 +455,11 @@ export async function downloadYouTubeAudio(
     console.log('  URL:', url);
     console.log('  Output:', outputTemplate);
 
-    // Run yt-dlp.exe directly - no PowerShell wrapper!
-    const command = Command.create(ytDlpPath, [
-      url,
-      '--ffmpeg-location', binDir,
-      '--no-check-certificate',
-      '--newline',
-      '--extract-audio',
-      '--audio-format', 'mp3',
-      '--audio-quality', '0',
-      '--embed-thumbnail',
-      '--add-metadata',
-      '-o', outputTemplate,
-      '--print', 'after_move:filepath',
-      '--no-playlist'
+    // Run yt-dlp via PowerShell (required by Tauri shell permissions)
+    const command = Command.create('powershell', [
+      '-NoProfile',
+      '-Command',
+      `& "${ytDlpPath}" "${url}" --ffmpeg-location "${binDir}" --no-check-certificate --newline --extract-audio --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "${outputTemplate}" --print "after_move:filepath" --no-playlist`
     ]);
 
     let filePath = '';
