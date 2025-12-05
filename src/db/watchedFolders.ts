@@ -8,7 +8,11 @@ export async function getWatchedFolders(): Promise<WatchedFolder[]> {
 }
 
 export async function getWatchedFolderByName(name: string): Promise<WatchedFolder | undefined> {
-  return db.watchedFolders.where('path').equals(name).first();
+  return db.watchedFolders.where('name').equals(name).first();
+}
+
+export async function getWatchedFolderByPath(path: string): Promise<WatchedFolder | undefined> {
+  return db.watchedFolders.where('path').equals(path).first();
 }
 
 export async function addWatchedFolder(folder: WatchedFolder): Promise<string> {

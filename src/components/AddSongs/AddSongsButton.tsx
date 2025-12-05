@@ -7,6 +7,7 @@ import { isTauriApp } from '../../utils/tauriDetect';
 import {
   addWatchedFolder,
   getWatchedFolderByName,
+  getWatchedFolderByPath,
   WatchedFolder,
   updateFolderSongCount,
   updateFolderScanTime,
@@ -134,7 +135,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
 
       const processFile = async (file: AudioFileFromRust): Promise<Song | null> => {
         try {
-          // Data already limited to 256KB from Rust
+          // Data already limited to 1MB from Rust
           const metadataBuffer = new Uint8Array(file.data).buffer;
           const metadata = await extractMetadataFromBuffer(metadataBuffer, file.name);
 
@@ -153,6 +154,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
             originalPath: file.path,
             addedAt: Date.now(),
             playCount: 0,
+            isFavorite: false,
             folderId,
             fileName: file.name,
           };
@@ -236,8 +238,9 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
         return;
       }
 
-      // Check if folder already exists
-      const existingFolder = await getWatchedFolderByName(folderNameSelected);
+      // Check if folder already exists (by path first, then by name)
+      const existingFolder = await getWatchedFolderByPath(folderPathSelected) 
+        || await getWatchedFolderByName(folderNameSelected);
       let currentFolderId: string;
       let existingFileNames = new Set<string>();
 
@@ -302,6 +305,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
             subFolder,
             addedAt: Date.now(),
             playCount: 0,
+            isFavorite: false,
             folderId: currentFolderId,
             fileName: file.name,
           };
@@ -367,7 +371,8 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
       fullFolderPath = filePath.substring(0, filePath.lastIndexOf('\\') || filePath.lastIndexOf('/'));
     }
 
-    const existingFolder = await getWatchedFolderByName(detectedFolderName);
+    const existingFolder = await getWatchedFolderByPath(fullFolderPath) 
+      || await getWatchedFolderByName(detectedFolderName);
 
     if (existingFolder) {
       currentFolderId = existingFolder.id;
@@ -422,6 +427,7 @@ export function AddSongsButton({ onSongsAdded, mode = 'add', folderId, folderNam
           originalPath,
           addedAt: Date.now(),
           playCount: 0,
+          isFavorite: false,
           folderId: finalFolderId,
           fileName: file.name,
         };
