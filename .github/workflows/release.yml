@@ -44,6 +44,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Smart Player ${{ github.ref_name }}'
@@ -55,11 +57,11 @@ jobs:
             - **Portable** - גרסה ניידת
             
             ### שינויים
-            ראה את רשימת השינויים המלאה ב-[CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+            ראה את רשימת השינויים המלאה ב-[CHANGELOG.md](https://github.com/userbot000/smart-player/blob/main/CHANGELOG.md)
             
             ---
             
-            **הערה**: אם האפליקציה לא נפתחת, ראה [מדריך פתרון בעיות](https://github.com/${{ github.repository }}/blob/main/TROUBLESHOOTING.md)
+            **הערה**: אם האפליקציה לא נפתחת, ראה [מדריך פתרון בעיות](https://github.com/userbot000/smart-player/blob/main/TROUBLESHOOTING.md)
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

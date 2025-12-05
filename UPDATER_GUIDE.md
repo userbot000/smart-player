@@ -60,16 +60,13 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/latest.json"
-      ]
+        "https://github.com/userbot000/smart-player/releases/latest/download/latest.json"
+      ],
+      "pubkey": ""
     }
   }
 }
 ```
-
-**החלף**:
-- `YOUR_USERNAME` - שם המשתמש שלך ב-GitHub
-- `YOUR_REPO` - שם ה-repository
 
 ---
 
@@ -242,7 +239,7 @@ ls src-tauri/target/release/bundle/nsis/
 **פתרון**:
 ```bash
 # בדוק את ה-endpoint
-curl https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/latest.json
+curl https://github.com/userbot000/smart-player/releases/latest/download/latest.json
 ```
 
 ### שגיאת חתימה דיגיטלית

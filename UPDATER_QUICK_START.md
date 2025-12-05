@@ -19,27 +19,22 @@ git remote add origin https://github.com/YOUR_USERNAME/smart-player.git
 git push -u origin main
 ```
 
-### 2️⃣ הגדר את ה-Updater Endpoint
+### 2️⃣ ה-Updater Endpoint כבר מוגדר! ✅
 
-ערוך את `src-tauri/tauri.conf.json` והוסף (אחרי `"bundle": {...}`):
+הקובץ `src-tauri/tauri.conf.json` כבר מוגדר עם:
 
 ```json
 {
-  "bundle": {
-    ...
-  },
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/YOUR_USERNAME/smart-player/releases/latest/download/latest.json"
+        "https://github.com/userbot000/smart-player/releases/latest/download/latest.json"
       ],
       "pubkey": ""
     }
   }
 }
 ```
-
-**החלף `YOUR_USERNAME`** בשם המשתמש שלך ב-GitHub!
 
 ### 3️⃣ צור Release ראשון
 
@@ -119,7 +114,7 @@ if (update) {
 
 ```bash
 # בדוק שה-endpoint נכון
-curl https://github.com/YOUR_USERNAME/smart-player/releases/latest/download/latest.json
+curl https://github.com/userbot000/smart-player/releases/latest/download/latest.json
 ```
 
 אם מקבל 404:
