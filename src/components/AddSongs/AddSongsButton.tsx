@@ -40,8 +40,8 @@ function isAudioFile(fileName: string): boolean {
   return AUDIO_EXTENSIONS.includes(ext);
 }
 
-// Read only first 256KB for metadata (much faster than full file)
-const METADATA_CHUNK_SIZE = 256 * 1024;
+// Read first 1MB for metadata (covers most album art sizes)
+const METADATA_CHUNK_SIZE = 1024 * 1024;
 
 async function readFileMetadataChunk(file: File): Promise<ArrayBuffer> {
   // Read only what we need for metadata

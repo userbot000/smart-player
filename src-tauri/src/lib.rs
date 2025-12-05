@@ -50,8 +50,8 @@ async fn scan_folder(folder_path: String, app_handle: tauri::AppHandle) -> Resul
     let audio_extensions = ["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "opus"];
     let mut files = Vec::new();
     
-    // Read only first 256KB for metadata extraction (much faster!)
-    const METADATA_SIZE: usize = 256 * 1024;
+    // Read first 1MB for metadata extraction (covers most album art)
+    const METADATA_SIZE: usize = 1024 * 1024;
     const BATCH_SIZE: usize = 10; // Process in batches of 10 files
 
     // First pass: count total files for progress tracking
