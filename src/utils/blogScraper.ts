@@ -1,7 +1,7 @@
 // Blogspot Scraper for newsmusic.blogspot.com
-// Uses Tauri Shell to run PowerShell for scraping (bypasses CORS)
+// Uses Tauri HTTP plugin for scraping (bypasses CORS)
 
-import { Command } from '@tauri-apps/plugin-shell';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import {
   getBlogSyncState as dbGetState,
   saveBlogSyncState as dbSaveState,
@@ -67,27 +67,25 @@ export async function markPostAsDownloaded(postId: string): Promise<void> {
   }
 }
 
-// Fetch page HTML using PowerShell (bypasses CORS completely)
+// Fetch page HTML using Tauri HTTP plugin (bypasses CORS)
 async function fetchPageHtml(url: string): Promise<string> {
   if (!isTauri()) {
     throw new Error('יש להריץ את האפליקציה דרך Tauri');
   }
 
   try {
-    // Use PowerShell to fetch the page
-    const command = Command.create('powershell', [
-      '-NoProfile',
-      '-Command',
-      `(Invoke-WebRequest -Uri "${url}" -UseBasicParsing).Content`
-    ]);
+    const response = await tauriFetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
 
-    const output = await command.execute();
-
-    if (output.code !== 0) {
-      throw new Error(output.stderr || 'PowerShell command failed');
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
 
-    return output.stdout;
+    return await response.text();
   } catch (error) {
     console.error('Fetch error:', error);
     throw new Error('לא ניתן להתחבר לאתר. נסה שוב מאוחר יותר.');
