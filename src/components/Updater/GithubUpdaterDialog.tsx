@@ -11,7 +11,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { ArrowDownload24Regular, Checkmark24Regular } from '@fluentui/react-icons';
-import { checkForUpdate, downloadAndInstall } from '../../utils/githubUpdater';
+import { checkForUpdate, downloadUpdate } from '../../utils/githubUpdater';
 import './UpdaterDialog.css';
 
 interface GithubUpdaterDialogProps {
@@ -22,7 +22,7 @@ interface GithubUpdaterDialogProps {
 
 export function GithubUpdaterDialog({ open, onClose, currentVersion }: GithubUpdaterDialogProps) {
   const [checking, setChecking] = useState(false);
-  const [installing, setInstalling] = useState(false);
+
   const [updateInfo, setUpdateInfo] = useState<any>(null);
   const [error, setError] = useState('');
 
@@ -47,22 +47,19 @@ export function GithubUpdaterDialog({ open, onClose, currentVersion }: GithubUpd
     setChecking(false);
   };
 
-  const handleInstall = async () => {
+  const handleDownload = async () => {
     if (!updateInfo?.downloadUrl) return;
     
-    setInstalling(true);
-    setError('');
-    
     try {
-      await downloadAndInstall(updateInfo.downloadUrl);
+      await downloadUpdate(updateInfo.downloadUrl);
+      onClose();
     } catch (err) {
-      setError('שגיאה בהתקנה');
-      setInstalling(false);
+      setError('שגיאה בפתיחת הדפדפן');
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => !installing && onClose()}>
+    <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogSurface className="updater-dialog">
         <DialogBody>
           <DialogTitle>עדכון תוכנה</DialogTitle>
@@ -81,7 +78,7 @@ export function GithubUpdaterDialog({ open, onClose, currentVersion }: GithubUpd
               </div>
             )}
 
-            {updateInfo && !installing && (
+            {updateInfo && (
               <div className="updater-dialog__available">
                 <div className="updater-dialog__version-info">
                   <Text>גרסה נוכחית: {currentVersion}</Text>
@@ -99,12 +96,7 @@ export function GithubUpdaterDialog({ open, onClose, currentVersion }: GithubUpd
               </div>
             )}
 
-            {installing && (
-              <div className="updater-dialog__downloading">
-                <Spinner label="מתקין עדכון..." />
-                <Text size={200}>האפליקציה תיסגר ותיפתח מחדש</Text>
-              </div>
-            )}
+
 
             {error && updateInfo && (
               <Text style={{ color: 'var(--colorPaletteRedForeground1)' }}>
@@ -114,7 +106,7 @@ export function GithubUpdaterDialog({ open, onClose, currentVersion }: GithubUpd
             
           </DialogContent>
           <DialogActions>
-            {!checking && !installing && (
+            {!checking && (
               <>
                 <Button appearance="secondary" onClick={onClose}>
                   {updateInfo ? 'אחר כך' : 'סגור'}
@@ -122,10 +114,10 @@ export function GithubUpdaterDialog({ open, onClose, currentVersion }: GithubUpd
                 {updateInfo && (
                   <Button 
                     appearance="primary" 
-                    onClick={handleInstall}
+                    onClick={handleDownload}
                     icon={<ArrowDownload24Regular />}
                   >
-                    התקן עכשיו
+                    הורד עדכון
                   </Button>
                 )}
               </>
