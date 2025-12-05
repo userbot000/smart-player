@@ -3,6 +3,17 @@
   "productName": "Smart Player",
   "version": "0.1.0",
   "identifier": "com.user.smart-player",
+  "plugins": {
+    "shell": {
+      "scope": [
+        {
+          "name": "powershell",
+          "cmd": "powershell",
+          "args": true
+        }
+      ]
+    }
+  },
   "build": {
     "beforeDevCommand": "npm run dev:web",
     "devUrl": "http://localhost:1420",
