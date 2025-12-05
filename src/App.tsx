@@ -18,7 +18,7 @@ import { useMiniPlayerSync } from './hooks/useMiniPlayerSync';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
 import { extractMetadataFromBuffer } from './utils/audioMetadata';
-import { check } from '@tauri-apps/plugin-updater';
+import { checkForUpdate } from './utils/githubUpdater';
 import { useToast } from './components/Toast/ToastProvider';
 
 import './styles/index.css';
@@ -501,8 +501,8 @@ function App() {
   // Check for updates
   const checkForUpdates = async () => {
     try {
-      const update = await check();
-      if (update) {
+      const update = await checkForUpdate('0.1.0');
+      if (update.available) {
         // Show toast notification
         showInfo(`גרסה ${update.version} זמינה! עבור להגדרות כדי להתקין.`, 'עדכון זמין');
         

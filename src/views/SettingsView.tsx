@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Label, Button, Text, Input, Spinner, RadioGroup, Radio, Switch } from '@fluentui/react-components';
 import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular, FolderOpen24Regular, ArrowSync24Regular } from '@fluentui/react-icons';
-import { UpdaterDialog } from '../components/Updater';
+import { GithubUpdaterDialog } from '../components/Updater';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';
 import { getArtistFiltersAsync, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
@@ -411,10 +411,10 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
         </div>
       </section>
 
-      <UpdaterDialog 
+      <GithubUpdaterDialog 
         open={showUpdater} 
         onClose={() => setShowUpdater(false)} 
-        autoCheck={true}
+        currentVersion="0.1.0"
       />
 
       <style>{`
