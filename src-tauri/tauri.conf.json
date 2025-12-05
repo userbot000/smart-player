@@ -28,7 +28,10 @@
       "endpoints": [
         "https://github.com/userbot000/smart-player/releases/latest/download/latest.json"
       ],
-      "pubkey": ""
+      "pubkey": "",
+      "windows": {
+        "installMode": "passive"
+      }
     }
   },
   "bundle": {
