@@ -44,8 +44,9 @@
 ```json
 {
   "bundle": {
-    "createUpdaterArtifacts": true,
-    "targets": ["nsis", "updater"]
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true
   }
 }
 ```
