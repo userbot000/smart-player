@@ -18,6 +18,8 @@ import { useMiniPlayerSync } from './hooks/useMiniPlayerSync';
 import { downloadAudioFromUrl } from './utils/downloadAudio';
 import { startChannelTracking, stopChannelTracking } from './utils/ytChannelTracker';
 import { extractMetadataFromBuffer } from './utils/audioMetadata';
+import { check } from '@tauri-apps/plugin-updater';
+import { useToast } from './components/Toast/ToastProvider';
 
 import './styles/index.css';
 
@@ -39,6 +41,7 @@ function App() {
   const isDark = themeMode === 'system' ? systemDark : themeMode === 'dark';
   
   const { currentSong, progress, volume, setSong, setProgress, setVolume, setQueue, setPlaying } = usePlayerStore();
+  const { showInfo } = useToast();
 
   // Audio player hook
   const { seek } = useAudioPlayer();
@@ -310,6 +313,9 @@ function App() {
         
         await loadSongs();
         
+        // Check for updates on startup
+        checkForUpdates();
+        
         // Start YouTube channel tracking
         startChannelTracking((channel, videos) => {
           console.log(`New videos from ${channel.name}:`, videos);
@@ -492,6 +498,37 @@ function App() {
 
   const favoriteSongs = songs.filter((s) => s.isFavorite);
 
+  // Check for updates
+  const checkForUpdates = async () => {
+    try {
+      const update = await check();
+      if (update) {
+        // Show toast notification
+        showInfo(`גרסה ${update.version} זמינה! עבור להגדרות כדי להתקין.`, 'עדכון זמין');
+        
+        // Show native notification
+        try {
+          const { isPermissionGranted, requestPermission, sendNotification } = await import('@tauri-apps/plugin-notification');
+          let permissionGranted = await isPermissionGranted();
+          if (!permissionGranted) {
+            const permission = await requestPermission();
+            permissionGranted = permission === 'granted';
+          }
+          if (permissionGranted) {
+            sendNotification({
+              title: 'עדכון זמין!',
+              body: `גרסה ${update.version} זמינה להורדה`,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to send notification:', err);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check for updates:', err);
+    }
+  };
+
   const handleOpenRingtone = (song: Song) => {
     setToolsInitialSong(song);
     setToolsInitialTab('ringtone');
@@ -504,92 +541,94 @@ function App() {
     setCurrentView('tools');
   };
 
-  const renderView = () => {
-    switch (currentView) {
-      case 'home':
-        return <HomeView recentSongs={recentSongs} totalSongs={songs.length} onSongsAdded={loadSongs} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
+  const viewStyle = (view: ViewType) => ({
+    display: currentView === view ? 'block' : 'none',
+    height: '100%',
+  });
 
-      case 'library':
-        return (
-          <LibraryView
-            songs={songs}
-            onDelete={handleDeleteSong}
-            onSongsAdded={loadSongs}
-            onToggleFavorite={handleToggleFavorite}
-            onOpenRingtone={handleOpenRingtone}
-            onOpenMetadata={handleOpenMetadata}
-          />
-        );
+  const renderAllViews = () => (
+    <>
+      <div style={viewStyle('home')}>
+        <HomeView recentSongs={recentSongs} totalSongs={songs.length} onSongsAdded={loadSongs} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />
+      </div>
 
-      case 'albums':
-        return <AlbumsView songs={songs} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
+      <div style={viewStyle('library')}>
+        <LibraryView
+          songs={songs}
+          onDelete={handleDeleteSong}
+          onSongsAdded={loadSongs}
+          onToggleFavorite={handleToggleFavorite}
+          onOpenRingtone={handleOpenRingtone}
+          onOpenMetadata={handleOpenMetadata}
+        />
+      </div>
 
-      case 'artists':
-        return <ArtistsView songs={songs} onToggleFavorite={handleToggleFavorite} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
+      <div style={viewStyle('albums')}>
+        <AlbumsView songs={songs} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />
+      </div>
 
-      case 'playlists':
-        return <PlaylistsView onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />;
+      <div style={viewStyle('artists')}>
+        <ArtistsView songs={songs} onToggleFavorite={handleToggleFavorite} onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />
+      </div>
 
-      case 'downloads':
-        return (
-          <DownloadsView
-            downloads={downloads}
-            onStartDownload={handleStartDownload}
-            onCancelDownload={handleCancelDownload}
-            onRemoveDownload={handleRemoveDownload}
-            onBatchDownload={handleBatchDownload}
-            onSongsAdded={loadSongs}
-          />
-        );
+      <div style={viewStyle('playlists')}>
+        <PlaylistsView onOpenRingtone={handleOpenRingtone} onOpenMetadata={handleOpenMetadata} />
+      </div>
 
-      case 'history':
-        return (
-          <LibraryView
-            songs={recentSongs}
-            onDelete={handleDeleteSong}
-            onSongsAdded={loadSongs}
-            onToggleFavorite={handleToggleFavorite}
-            onOpenRingtone={handleOpenRingtone}
-            onOpenMetadata={handleOpenMetadata}
-            title="היסטוריה"
-            viewType="history"
-            showAddButton={false}
-          />
-        );
+      <div style={viewStyle('downloads')}>
+        <DownloadsView
+          downloads={downloads}
+          onStartDownload={handleStartDownload}
+          onCancelDownload={handleCancelDownload}
+          onRemoveDownload={handleRemoveDownload}
+          onBatchDownload={handleBatchDownload}
+          onSongsAdded={loadSongs}
+        />
+      </div>
 
-      case 'favorites':
-        return (
-          <LibraryView
-            songs={favoriteSongs}
-            onDelete={handleDeleteSong}
-            onSongsAdded={loadSongs}
-            onToggleFavorite={handleToggleFavorite}
-            onOpenRingtone={handleOpenRingtone}
-            onOpenMetadata={handleOpenMetadata}
-            title="מועדפים"
-            viewType="favorites"
-            showAddButton={false}
-          />
-        );
+      <div style={viewStyle('history')}>
+        <LibraryView
+          songs={recentSongs}
+          onDelete={handleDeleteSong}
+          onSongsAdded={loadSongs}
+          onToggleFavorite={handleToggleFavorite}
+          onOpenRingtone={handleOpenRingtone}
+          onOpenMetadata={handleOpenMetadata}
+          title="היסטוריה"
+          viewType="history"
+          showAddButton={false}
+        />
+      </div>
 
-      case 'tools':
-        return <ToolsView songs={songs} onSongUpdated={loadSongs} initialSong={toolsInitialSong} initialTab={toolsInitialTab} />;
+      <div style={viewStyle('favorites')}>
+        <LibraryView
+          songs={favoriteSongs}
+          onDelete={handleDeleteSong}
+          onSongsAdded={loadSongs}
+          onToggleFavorite={handleToggleFavorite}
+          onOpenRingtone={handleOpenRingtone}
+          onOpenMetadata={handleOpenMetadata}
+          title="מועדפים"
+          viewType="favorites"
+          showAddButton={false}
+        />
+      </div>
 
-      case 'settings':
-        return (
-          <SettingsView
-            themeMode={themeMode}
-            onThemeModeChange={setThemeMode}
-            onFoldersChanged={loadSongs}
-            accentColor={accentColor}
-            onAccentColorChange={setAccentColor}
-          />
-        );
+      <div style={viewStyle('tools')}>
+        <ToolsView songs={songs} onSongUpdated={loadSongs} initialSong={toolsInitialSong} initialTab={toolsInitialTab} />
+      </div>
 
-      default:
-        return null;
-    }
-  };
+      <div style={viewStyle('settings')}>
+        <SettingsView
+          themeMode={themeMode}
+          onThemeModeChange={setThemeMode}
+          onFoldersChanged={loadSongs}
+          accentColor={accentColor}
+          onAccentColorChange={setAccentColor}
+        />
+      </div>
+    </>
+  );
 
   // Show loading screen until app is ready
   if (!isAppReady) {
@@ -611,7 +650,7 @@ function App() {
         <div className="app" data-theme={isDark ? 'dark' : 'light'}>
           <Sidebar currentView={currentView} onViewChange={setCurrentView} />
           <main className="app__main">
-            <div className="app__content">{renderView()}</div>
+            <div className="app__content">{renderAllViews()}</div>
             <PlayerControls seek={seek} isReady={!!seek} />
           </main>
         </div>

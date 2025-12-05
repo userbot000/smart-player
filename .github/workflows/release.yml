@@ -5,214 +5,61 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g., v1.0.0)'
-        required: true
-        type: string
-
-permissions:
-  contents: write
 
 jobs:
-  get-version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
     steps:
-      - name: Get version
-        id: get_version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
+      - uses: actions/checkout@v4
 
-  build-windows:
-    needs: get-version
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: lts/*
           cache: 'npm'
 
-      - name: Setup Rust
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
 
       - name: Rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: './src-tauri -> target'
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
+        run: npm ci
 
       - name: Build Tauri app
-        run: npm run tauri build
+        uses: tauri-apps/tauri-action@v0
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: List built files
-        run: |
-          echo "📦 Listing built files..."
-          echo "NSIS installers:"
-          ls -la src-tauri/target/release/bundle/nsis/ || echo "No NSIS files"
-          echo ""
-          echo "MSI installers:"
-          ls -la src-tauri/target/release/bundle/msi/ || echo "No MSI files"
-          echo ""
-          echo "Portable EXE:"
-          ls -la src-tauri/target/release/*.exe || echo "No EXE files"
-
-      - name: Prepare release files
-        id: prepare_files
-        run: |
-          mkdir -p release-files
-          
-          # Copy NSIS installer
-          if ls src-tauri/target/release/bundle/nsis/*.exe 1> /dev/null 2>&1; then
-            cp src-tauri/target/release/bundle/nsis/*.exe release-files/ || true
-            echo "nsis_found=true" >> $GITHUB_OUTPUT
-          else
-            echo "nsis_found=false" >> $GITHUB_OUTPUT
-          fi
-          
-          # Copy MSI installer
-          if ls src-tauri/target/release/bundle/msi/*.msi 1> /dev/null 2>&1; then
-            cp src-tauri/target/release/bundle/msi/*.msi release-files/ || true
-            echo "msi_found=true" >> $GITHUB_OUTPUT
-          else
-            echo "msi_found=false" >> $GITHUB_OUTPUT
-          fi
-          
-          # Copy portable EXE
-          if [ -f "src-tauri/target/release/smart-player.exe" ]; then
-            cp src-tauri/target/release/smart-player.exe release-files/Smart-Player-Portable.exe || true
-            echo "exe_found=true" >> $GITHUB_OUTPUT
-          else
-            echo "exe_found=false" >> $GITHUB_OUTPUT
-          fi
-          
-          echo "Files prepared:"
-          ls -lh release-files/
-
-      - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ needs.get-version.outputs.version }}
-          name: Smart Player ${{ needs.get-version.outputs.version }}
-          body: |
-            ## 🎵 Smart Player ${{ needs.get-version.outputs.version }}
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Smart Player ${{ github.ref_name }}'
+          releaseBody: |
+            ## 🎵 Smart Player ${{ github.ref_name }}
             
-            ### 📥 הורדות Windows
-            ${{ steps.prepare_files.outputs.nsis_found == 'true' && '- ✅ **NSIS Installer** (מומלץ) - התקנה מלאה עם file associations' || '' }}
-            ${{ steps.prepare_files.outputs.msi_found == 'true' && '- ✅ **MSI Installer** - חלופה למערכות ארגוניות' || '' }}
-            ${{ steps.prepare_files.outputs.exe_found == 'true' && '- ✅ **Portable EXE** - גרסה ניידת ללא התקנה' || '' }}
+            ### הורדה
+            - **NSIS Installer** (מומלץ) - התקנה מלאה עם WebView2
+            - **Portable** - גרסה ניידת
             
-            ### 📱 הורדות Android
-            - ⏳ Android APKs יתווספו בקרוב (אם Android מופעל)
-            
-            ### 📝 שינויים
-            ראה [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+            ### שינויים
+            ראה את רשימת השינויים המלאה ב-[CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
             
             ---
             
-            Made with ❤️ in Israel
-          draft: false
+            **הערה**: אם האפליקציה לא נפתחת, ראה [מדריך פתרון בעיות](https://github.com/${{ github.repository }}/blob/main/TROUBLESHOOTING.md)
+          releaseDraft: false
           prerelease: false
-          files: release-files/*
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-android:
-    needs: get-version
-    runs-on: ubuntu-latest
-    # Only run if Android is initialized (gen/android folder exists)
-    if: false  # Set to true after running 'npm run tauri android init'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Android targets
-        run: |
-          rustup target add aarch64-linux-android
-          rustup target add armv7-linux-androideabi
-          rustup target add x86_64-linux-android
-          rustup target add i686-linux-android
-
-      - name: Setup Android SDK & NDK
-        run: |
-          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
-          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
-
-      - name: Build Android APK (ARM64)
-        run: npm run tauri android build -- --target aarch64 --apk
-        env:
-          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-
-      - name: Build Android APK (ARMv7)
-        run: npm run tauri android build -- --target armv7 --apk
-        env:
-          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-        continue-on-error: true
-
-      - name: Build Android APK (Universal)
-        run: npm run tauri android build -- --target universal --apk
-        env:
-          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-        continue-on-error: true
-
-      - name: Find APK files
-        id: find_apk
-        run: |
-          APK_ARM64=$(find src-tauri/gen/android/app/build/outputs/apk -name "*arm64-v8a*.apk" | head -n 1)
-          APK_ARMV7=$(find src-tauri/gen/android/app/build/outputs/apk -name "*armeabi-v7a*.apk" | head -n 1)
-          APK_UNIVERSAL=$(find src-tauri/gen/android/app/build/outputs/apk -name "*universal*.apk" | head -n 1)
-          echo "apk_arm64=$APK_ARM64" >> $GITHUB_OUTPUT
-          echo "apk_armv7=$APK_ARMV7" >> $GITHUB_OUTPUT
-          echo "apk_universal=$APK_UNIVERSAL" >> $GITHUB_OUTPUT
-
-      - name: Upload Android APKs to Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.get-version.outputs.version }}
-          files: |
-            src-tauri/gen/android/**/outputs/apk/**/*.apk
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          args: ${{ matrix.args }}

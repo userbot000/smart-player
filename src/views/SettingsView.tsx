@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Label, Button, Text, Input, Spinner, RadioGroup, Radio, Switch } from '@fluentui/react-components';
-import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
+import { Folder24Regular, Delete24Regular, Add24Regular, Video24Regular, FolderOpen24Regular, ArrowSync24Regular } from '@fluentui/react-icons';
+import { UpdaterDialog } from '../components/Updater';
 import { getWatchedFolders, removeWatchedFolder, WatchedFolder } from '../db/watchedFolders';
 import { AddSongsButton } from '../components/AddSongs/AddSongsButton';
 import { getArtistFiltersAsync, saveArtistFilters, ArtistFilters } from '../utils/artistFilters';
@@ -45,6 +46,9 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
 
   // Download folder
   const [downloadFolderPath, setDownloadFolderPath] = useState<string>('');
+
+  // Updater
+  const [showUpdater, setShowUpdater] = useState(false);
 
   useEffect(() => {
     loadFolders();
@@ -155,6 +159,20 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
       <div className="view__header">
         <h2 className="view__title">הגדרות</h2>
       </div>
+
+      <section className="settings-section">
+        <h3 className="settings-section__title">עדכונים</h3>
+        <p className="settings-section__desc">
+          בדוק אם יש גרסה חדשה של התוכנה
+        </p>
+        <Button
+          appearance="primary"
+          icon={<ArrowSync24Regular />}
+          onClick={() => setShowUpdater(true)}
+        >
+          בדוק עדכונים
+        </Button>
+      </section>
 
       <section className="settings-section">
         <h3 className="settings-section__title">מראה</h3>
@@ -392,6 +410,12 @@ export function SettingsView({ themeMode, onThemeModeChange, onFoldersChanged, a
           </div>
         </div>
       </section>
+
+      <UpdaterDialog 
+        open={showUpdater} 
+        onClose={() => setShowUpdater(false)} 
+        autoCheck={true}
+      />
 
       <style>{`
         .settings-view {
