@@ -9,4 +9,4 @@ export { FolderTreeView } from './FolderTreeView/FolderTreeView';
 export { DownloadManager } from './Downloads/DownloadManager';
 export { AddSongsButton } from './AddSongs/AddSongsButton';
 export { LibraryActions } from './AddSongs/LibraryActions';
-export { UpdaterDialog } from './Updater';
+export { GithubUpdaterDialog } from './Updater';
